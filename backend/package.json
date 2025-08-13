@@ -1,0 +1,29 @@
+{
+  "name": "@primepass/backend",
+  "version": "1.0.0",
+  "description": "PrimePass Django backend",
+  "private": true,
+  "scripts": {
+    "dev": "python manage.py runserver 0.0.0.0:8000",
+    "dev:watch": "watchmedo auto-restart --directory=. --pattern=*.py --recursive -- python manage.py runserver 0.0.0.0:8000",
+    "build": "python manage.py collectstatic --noinput",
+    "test": "python manage.py test",
+    "test:coverage": "coverage run --source='.' manage.py test && coverage report",
+    "migrate": "python manage.py migrate",
+    "makemigrations": "python manage.py makemigrations",
+    "seed": "python manage.py seed_data",
+    "shell": "python manage.py shell",
+    "lint": "flake8 . && black --check .",
+    "lint:fix": "black . && isort .",
+    "type-check": "mypy .",
+    "clean": "find . -name '*.pyc' -delete && find . -name '__pycache__' -delete",
+    "createsuperuser": "python manage.py createsuperuser",
+    "loaddata": "python manage.py loaddata fixtures/initial_data.json",
+    "dumpdata": "python manage.py dumpdata --indent 2 > fixtures/backup.json"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "python": ">=3.11"
+  }
+}
