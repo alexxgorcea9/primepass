@@ -11,7 +11,7 @@ from .base import *
 # DEBUG SETTINGS
 # ==============================================================================
 
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend']
 
 # ==============================================================================
@@ -22,6 +22,10 @@ INSTALLED_APPS += [
     'django_extensions',
     'debug_toolbar',
     'silk',
+#    "rest_framework_simplejwt.token_blacklist",
+#    "apps.legacy",
+ #   "apps.auth",
+
 ]
 
 # ==============================================================================
@@ -31,6 +35,7 @@ INSTALLED_APPS += [
 MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'silk.middleware.SilkyMiddleware',
+    #"apps.legacy.middleware.JWTAuthMiddleware",
 ] + MIDDLEWARE
 
 # ==============================================================================

@@ -40,6 +40,7 @@ THIRD_PARTY_APPS = [
     # REST Framework
     'rest_framework',
     'rest_framework_simplejwt',
+    "rest_framework_simplejwt.token_blacklist",
     'drf_spectacular',
     
     # CORS
@@ -77,7 +78,8 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-
+    "apps.legacy",
+    "apps.auth",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -91,6 +93,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'allauth.account.middleware.AccountMiddleware',  # Temporarily commented
+    "apps.legacy.middleware.JWTAuthMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',
@@ -166,7 +169,7 @@ SESSION_COOKIE_AGE = config('SESSION_CACHE_TTL', default=86400, cast=int)
 # AUTHENTICATION CONFIGURATION
 # ==============================================================================
 
-# AUTH_USER_MODEL = 'accounts.User'  # Temporarily commented until accounts app is created
+AUTH_USER_MODEL = 'backend.User'  # Temporarily commented until accounts app is created
 
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesBackend',
