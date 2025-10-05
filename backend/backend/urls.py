@@ -22,19 +22,14 @@ from rest_framework_simplejwt.views import (
 
 # API URL patterns
 api_v1_patterns = [
-    # Authentication
+    # Auth JWT (DRF SimpleJWT)
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh_jwt'),  # renamed to avoid name clash
     path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    
-    # Core apps (commented out until apps are created)
-    # path('events/', include('apps.events.urls')),
-    # path('notifications/', include('apps.notifications.urls')),
-    # path('payments/', include('apps.payments.urls')),
-    # path('analytics/', include('apps.analytics.urls')),
-    
-    # Health check
-    path('health/', include('health_check.urls')),
+
+    # Our app endpoints (signup/login/logout/user-profile/token/refresh/oauth…)
+    # NOTE: empty prefix here so they live at /api/v1/<route> (e.g., /api/v1/signup/)
+    path('', include('apps.auth.urls')),
 ]
 
 # Main URL patterns
@@ -44,7 +39,8 @@ urlpatterns = [
     
     # API
     path('api/v1/', include(api_v1_patterns)),
-    
+    path('api/', include('apps.auth.urls')),
+
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
