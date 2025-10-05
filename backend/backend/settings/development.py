@@ -91,6 +91,19 @@ CACHES['default']['OPTIONS']['IGNORE_EXCEPTIONS'] = True
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # ==============================================================================
+# MEDIA FILES (Local Storage in Development)
+# ==============================================================================
+
+# Always use local filesystem storage in development
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Create media directory if it doesn't exist
+import os
+os.makedirs(MEDIA_ROOT / 'profiles', exist_ok=True)
+
+# ==============================================================================
 # CORS CONFIGURATION
 # ==============================================================================
 

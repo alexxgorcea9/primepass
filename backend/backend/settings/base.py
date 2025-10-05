@@ -295,11 +295,27 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+# ==============================================================================
+# MEDIA FILES CONFIGURATION (Local Storage by Default)
+# ==============================================================================
+# Media files are uploaded user content (profile pictures, event images, etc.)
+# By default, use local filesystem storage for development.
+# Production should override this with S3 storage.
+
 MEDIA_URL = config('MEDIA_URL', default='/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# WhiteNoise configuration
+# Default file storage backend
+# This will be overridden in production.py when USE_S3=True
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+# WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
 
 # ==============================================================================
 # SECURITY SETTINGS

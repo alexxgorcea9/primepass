@@ -67,29 +67,113 @@ CACHES['default']['OPTIONS'].update({
 })
 
 # ==============================================================================
-# STATIC FILES AND MEDIA
+# STATIC FILES AND MEDIA (AWS S3 Configuration)
 # ==============================================================================
 
-# Use cloud storage in production
-if config('USE_S3', default=False, cast=bool):
-    # AWS S3 Configuration
+# Use cloud storage in production (controlled by USE_S3 environment variable)
+USE_S3 = config('USE_S3', default=False, cast=bool)
+
+if USE_S3:
+    # ==============================================================================
+    # AWS S3 CONFIGURATION
+    # ==============================================================================
+    
+    # AWS Credentials
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+    
+    # Optional: Use CloudFront or custom domain for faster delivery
     AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None)
-    AWS_DEFAULT_ACL = None
+    
+    # S3 Security and Performance Settings
+    AWS_DEFAULT_ACL = None  # Use bucket's default ACL
+    AWS_S3_FILE_OVERWRITE = False  # Don't overwrite files with same name
+    AWS_S3_SIGNATURE_VERSION = 's3v4'  # Use Signature Version 4 for security
+    AWS_QUERYSTRING_AUTH = True  # Generate signed URLs for private files
+    AWS_QUERYSTRING_EXPIRE = 3600  # Signed URLs expire after 1 hour
+    
+    # S3 Object Parameters (headers for uploaded files)
     AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400',
+        'CacheControl': 'max-age=86400',  # Cache for 24 hours
     }
     
-    # Static files
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/static/'
+    # Connection Settings
+    AWS_S3_MAX_MEMORY_SIZE = 5242880  # 5MB - files larger than this use temporary files
+    AWS_S3_USE_THREADS = True  # Use threading for faster uploads
     
-    # Media files
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/media/'
+    # ==============================================================================
+    # STATIC FILES (CSS, JS, etc.) - Using S3
+    # ==============================================================================
+    
+    STATICFILES_STORAGE = 'backend.storages.StaticStorage'
+    
+    # Construct static URL
+    if AWS_S3_CUSTOM_DOMAIN:
+        STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+    else:
+        STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/static/'
+    
+    # ==============================================================================
+    # MEDIA FILES (User Uploads) - Using S3
+    # ==============================================================================
+    
+    DEFAULT_FILE_STORAGE = 'backend.storages.MediaStorage'
+    
+    # Construct media URL
+    if AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    else:
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/'
+    
+    # ==============================================================================
+    # S3 BUCKET LIFECYCLE & CORS (Documentation)
+    # ==============================================================================
+    # 
+    # Ensure your S3 bucket has the following configuration:
+    #
+    # 1. CORS Configuration (for direct uploads from frontend):
+    # [
+    #     {
+    #         "AllowedHeaders": ["*"],
+    #         "AllowedMethods": ["GET", "POST", "PUT"],
+    #         "AllowedOrigins": ["https://yourdomain.com"],
+    #         "ExposeHeaders": ["ETag"],
+    #         "MaxAgeSeconds": 3000
+    #     }
+    # ]
+    #
+    # 2. Bucket Policy (for public read access to profile pictures - optional):
+    # {
+    #     "Version": "2012-10-17",
+    #     "Statement": [
+    #         {
+    #             "Sid": "PublicReadGetObject",
+    #             "Effect": "Allow",
+    #             "Principal": "*",
+    #             "Action": "s3:GetObject",
+    #             "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/media/profiles/*"
+    #         }
+    #     ]
+    # }
+    #
+    # 3. IAM User Permissions (minimum required):
+    # - s3:PutObject
+    # - s3:GetObject
+    # - s3:DeleteObject
+    # - s3:ListBucket
+    # ==============================================================================
+
+else:
+    # Use local filesystem storage (fallback for production if S3 not configured)
+    # This should not be used in production - set USE_S3=True
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "⚠️  Production is using local file storage. "
+        "Set USE_S3=True and configure AWS credentials for production use."
+    )
 
 # ==============================================================================
 # EMAIL CONFIGURATION

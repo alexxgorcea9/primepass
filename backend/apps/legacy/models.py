@@ -4,13 +4,13 @@ import uuid
 
 
 # ----------------------------
-# 1️⃣ USER & ORGANIZER MODELS
+# 1️⃣ USER MODEL
 # ----------------------------
 
 class UserRole(models.TextChoices):
-    GUEST = 'guest', 'Guest'
-    ORGANIZER = 'organizer', 'Organizer'
-    VENDOR = 'vendor', 'Vendor'
+    GUEST = 'Guest'
+    ORGANIZER = 'Organizer'
+    TEAM = 'Team'
 
 
 class UserManager(BaseUserManager):
