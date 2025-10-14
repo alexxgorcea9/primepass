@@ -14,27 +14,22 @@ import hashlib
 import base64
 import secrets
 from django.contrib.auth import get_user_model
-from .auth import JWTAuth
 from django.core.cache import cache
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
-# These would normally be in settings.py or environment variables
-# To fix the 'invalid_client' error, replace these placeholder values with your actual credentials
-# from the Google Cloud Console: https://console.cloud.google.com/apis/credentials
-GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"  # Replace with your actual client ID
-GOOGLE_CLIENT_SECRET = "YOUR_GOOGLE_CLIENT_SECRET"  # Replace with your actual client secret
-GOOGLE_REDIRECT_URI = "http://localhost:5173/oauth/google/callback"  # Frontend callback URL
+# Read from environment variables
+GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
+GOOGLE_REDIRECT_URI = settings.GOOGLE_REDIRECT_URI
 
-INSTAGRAM_CLIENT_ID = "YOUR_INSTAGRAM_CLIENT_ID"  # Replace with your actual client ID
-INSTAGRAM_CLIENT_SECRET = "YOUR_INSTAGRAM_CLIENT_SECRET"  # Replace with your actual client secret
-INSTAGRAM_REDIRECT_URI = "http://localhost:5173/oauth/instagram/callback"  # Frontend callback URL
+# NOTE: Instagram OAuth configuration moved to instagram_auth.py
+# Instagram now uses proper settings from Django settings (INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET)
+# and handles the email collection issue properly
 
-APPLE_CLIENT_ID = "YOUR_APPLE_CLIENT_ID"  # Replace with your actual client ID
-APPLE_TEAM_ID = "YOUR_APPLE_TEAM_ID"  # Replace with your actual team ID
-APPLE_KEY_ID = "YOUR_APPLE_KEY_ID"  # Replace with your actual key ID
-APPLE_PRIVATE_KEY = "YOUR_APPLE_PRIVATE_KEY"  # Replace with your actual private key
-APPLE_REDIRECT_URI = "http://localhost:5173/oauth/apple/callback"  # Frontend callback URL
+# NOTE: Apple OAuth configuration moved to apple_auth.py
+# Apple Sign In now uses proper settings from Django settings and secure JWT verification
 
 
 # Note: You'll need to register these redirect URIs with each provider's developer console
@@ -81,34 +76,41 @@ def get_or_create_user_from_oauth(email, provider, provider_id, profile_data):
     try:
         # Look for existing user with this email
         user = User.objects.get(email=email)
+        is_new = False
 
         # Update provider details if needed
         if not getattr(user, f"{provider}_id", None):
             setattr(user, f"{provider}_id", provider_id)
             user.save()
+        
+        # Mark email as verified (OAuth providers verify emails)
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
 
     except User.DoesNotExist:
         # Create new user
         user = User.objects.create_user(
             email=email,
             password=None,  # No password for OAuth users
-            is_active=True
+            is_active=True,
+            email_verified=True  # OAuth providers verify emails
         )
         setattr(user, f"{provider}_id", provider_id)
+        is_new = True
 
         # Set name if available
         if 'name' in profile_data and hasattr(user, 'name'):
             user.name = profile_data.get('name')
 
-        # Set profile picture if available
-        if 'picture' in profile_data and hasattr(user, 'profile_picture'):
-            user.profile_picture = profile_data.get('picture')
+        # Note: We skip setting profile_picture here since it's a URL from OAuth
+        # The frontend can fetch and upload it separately if needed
 
         # Default role is 'guest'
         user.role = 'guest'
         user.save()
 
-    return user
+    return user, is_new
 
 
 class GoogleAuthView(APIView):
@@ -153,13 +155,17 @@ def google_callback(request):
     code = request.data.get('code')
     state = request.data.get('state')
 
+    print(f"[GOOGLE CALLBACK] Received code: {code[:20] if code else 'None'}... state: {state[:20] if state else 'None'}...")
+
     if not code or not state:
+        print("[GOOGLE CALLBACK] Error: Missing code or state")
         return Response({'error': 'Invalid request, missing code or state'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validate state and get code_verifier
     state_data = retrieve_oauth_state(state)
     if not state_data:
-        return Response({'error': 'Invalid state parameter'}, status=status.HTTP_400_BAD_REQUEST)
+        print(f"[GOOGLE CALLBACK] Error: Invalid or expired state parameter")
+        return Response({'error': 'Invalid or expired state parameter. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
     code_verifier = state_data.get('code_verifier')
 
@@ -204,7 +210,7 @@ def google_callback(request):
     if not email:
         return Response({'error': 'Email not provided by Google'}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = get_or_create_user_from_oauth(
+    user, is_new = get_or_create_user_from_oauth(
         email=email,
         provider='google',
         provider_id=userinfo.get('sub'),  # Google's user ID
@@ -214,8 +220,10 @@ def google_callback(request):
         }
     )
 
-    # Generate our JWT tokens
-    access_token, refresh_token = JWTAuth.generate_tokens(user)
+    # Generate JWT tokens using simplejwt (consistent with other auth methods)
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
 
     # Create response with tokens
     response = Response({
@@ -223,260 +231,57 @@ def google_callback(request):
             'id': user.id,
             'email': user.email,
             'role': user.role,
-            'profile_picture': getattr(user, 'profile_picture', None)
+            'name': user.name if hasattr(user, 'name') else email,
+            'profile_picture': user.profile_picture.url if user.profile_picture else None
         },
         'token': {
             'access': access_token,
             'refresh': refresh_token
-        }
+        },
+        'is_new_user': is_new
     })
 
-    # Set refresh token in HTTP-only cookie
+    # Set access token cookie (15 minutes)
+    response.set_cookie(
+        key='access_token',
+        value=access_token,
+        max_age=15 * 60,  # 15 minutes
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite='Lax'
+    )
+
+    # Set refresh token cookie (7 days)
     response.set_cookie(
         key='refresh_token',
         value=refresh_token,
+        max_age=7 * 24 * 3600,  # 7 days
         httponly=True,
         secure=not settings.DEBUG,
-        samesite='Lax',
-        max_age=7 * 24 * 3600  # 7 days
+        samesite='Lax'
     )
 
     return response
 
 
-class InstagramAuthView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        """
-        Start the Instagram OAuth flow
-        """
-        state = generate_state()
-
-        # Store state in cache
-        store_oauth_state(state)
-
-        # Construct Instagram OAuth URL
-        params = {
-            'client_id': INSTAGRAM_CLIENT_ID,
-            'redirect_uri': INSTAGRAM_REDIRECT_URI,
-            'response_type': 'code',
-            'scope': 'user_profile,user_media',
-            'state': state
-        }
-
-        auth_url = "https://api.instagram.com/oauth/authorize?" + "&".join([f"{k}={v}" for k, v in params.items()])
-
-        return Response({
-            'auth_url': auth_url
-        })
+# ==============================================================================
+# NOTE: Instagram OAuth Implementation Moved to instagram_auth.py
+# ==============================================================================
+# The secure Instagram implementation with proper email handling is now in
+# apps/auth/instagram_auth.py
+#
+# Key improvements in the new implementation:
+# 1. Uses .primepass.internal TLD for synthetic emails (reserved, not valid)
+# 2. Adds random suffix to prevent username collisions
+# 3. Creates users as inactive until real email is provided
+# 4. Includes 'requires_email_verification' flag in response
+# 5. Provides dedicated endpoint for email collection (POST /api/auth/update-email/)
+# 6. Validates state timestamp to prevent replay attacks
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def instagram_callback(request):
-    """
-    Handle Instagram OAuth callback - should be called from frontend after redirect
-    """
-    code = request.data.get('code')
-    state = request.data.get('state')
-
-    if not code or not state:
-        return Response({'error': 'Invalid request, missing code or state'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Validate state
-    state_data = retrieve_oauth_state(state)
-    if not state_data:
-        return Response({'error': 'Invalid state parameter'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Exchange code for token
-    token_url = 'https://api.instagram.com/oauth/access_token'
-    token_data = {
-        'client_id': INSTAGRAM_CLIENT_ID,
-        'client_secret': INSTAGRAM_CLIENT_SECRET,
-        'code': code,
-        'grant_type': 'authorization_code',
-        'redirect_uri': INSTAGRAM_REDIRECT_URI
-    }
-
-    token_response = requests.post(token_url, data=token_data)
-
-    if token_response.status_code != 200:
-        return Response({
-            'error': 'Failed to obtain access token',
-            'details': token_response.text
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    tokens = token_response.json()
-    access_token = tokens.get('access_token')
-    user_id = tokens.get('user_id')
-
-    # Get user info with access token (requires additional API call for Instagram)
-    graph_url = f'https://graph.instagram.com/me?fields=id,username&access_token={access_token}'
-    userinfo_response = requests.get(graph_url)
-
-    if userinfo_response.status_code != 200:
-        return Response({
-            'error': 'Failed to get user information',
-            'details': userinfo_response.text
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    userinfo = userinfo_response.json()
-    username = userinfo.get('username')
-
-    # Instagram doesn't provide email, so we create a placeholder email
-    email = f"{username}@instagram.user"
-
-    # Get or create user (note: since Instagram doesn't provide email,
-    # this implementation is simplified and might need adjustment for real use)
-    user = get_or_create_user_from_oauth(
-        email=email,
-        provider='instagram',
-        provider_id=user_id,
-        profile_data={
-            'name': username
-        }
-    )
-
-    # Generate our JWT tokens
-    access_token, refresh_token = JWTAuth.generate_tokens(user)
-
-    # Create response with tokens
-    response = Response({
-        'user': {
-            'id': user.id,
-            'email': user.email,
-            'role': user.role,
-            'profile_picture': getattr(user, 'profile_picture', None)
-        },
-        'token': {
-            'access': access_token,
-            'refresh': refresh_token
-        }
-    })
-
-    # Set refresh token in HTTP-only cookie
-    response.set_cookie(
-        key='refresh_token',
-        value=refresh_token,
-        httponly=True,
-        secure=not settings.DEBUG,
-        samesite='Lax',
-        max_age=7 * 24 * 3600  # 7 days
-    )
-
-    return response
-
-
-class AppleAuthView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        """
-        Start the Apple OAuth flow
-        """
-        state = generate_state()
-        nonce = secrets.token_urlsafe(32)
-
-        # Store state and nonce in cache
-        store_oauth_state(state, nonce=nonce)
-
-        # Construct Apple OAuth URL
-        params = {
-            'client_id': APPLE_CLIENT_ID,
-            'redirect_uri': APPLE_REDIRECT_URI,
-            'response_type': 'code',
-            'scope': 'email name',
-            'state': state,
-            'response_mode': 'form_post'
-        }
-
-        auth_url = "https://appleid.apple.com/auth/authorize?" + "&".join([f"{k}={v}" for k, v in params.items()])
-
-        return Response({
-            'auth_url': auth_url
-        })
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def apple_callback(request):
-    """
-    Handle Apple OAuth callback - should be called from frontend after redirect
-    """
-    code = request.data.get('code')
-    state = request.data.get('state')
-    id_token = request.data.get('id_token')
-    user_data = request.data.get('user')
-
-    if not code or not state:
-        return Response({'error': 'Invalid request, missing code or state'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Validate state and get nonce
-    state_data = retrieve_oauth_state(state)
-    if not state_data:
-        return Response({'error': 'Invalid state parameter'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Parse the id_token (JWT)
-    try:
-        # Note: This is simplified - in production, validate the JWT signature properly
-        payload = jwt.decode(id_token, options={"verify_signature": False})
-
-        # Extract user information
-        email = payload.get('email')
-        sub = payload.get('sub')  # Apple's unique user identifier
-
-        if not email or not sub:
-            return Response({'error': 'Required user information missing from token'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # User data might contain name on first login only
-        name = None
-        if user_data and isinstance(user_data, dict):
-            name_data = user_data.get('name', {})
-            if name_data:
-                first_name = name_data.get('firstName', '')
-                last_name = name_data.get('lastName', '')
-                name = f"{first_name} {last_name}".strip()
-
-        # Get or create user
-        user = get_or_create_user_from_oauth(
-            email=email,
-            provider='apple',
-            provider_id=sub,
-            profile_data={
-                'name': name
-            }
-        )
-
-        # Generate our JWT tokens
-        access_token, refresh_token = JWTAuth.generate_tokens(user)
-
-        # Create response with tokens
-        response = Response({
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'role': user.role,
-                'profile_picture': getattr(user, 'profile_picture', None)
-            },
-            'token': {
-                'access': access_token,
-                'refresh': refresh_token
-            }
-        })
-
-        # Set refresh token in HTTP-only cookie
-        response.set_cookie(
-            key='refresh_token',
-            value=refresh_token,
-            httponly=True,
-            secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=7 * 24 * 3600  # 7 days
-        )
-
-        return response
-
-    except jwt.PyJWTError as e:
-        return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+# ==============================================================================
+# NOTE: Apple OAuth Implementation Moved to apple_auth.py
+# ==============================================================================
+# The secure Apple Sign In implementation with proper JWT verification
+# is now in apps/auth/apple_auth.py
+# This was moved to ensure proper signature verification and security.

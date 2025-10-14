@@ -21,7 +21,15 @@ app.autodiscover_tasks()
 # Celery beat schedule
 app.conf.beat_schedule = {
     'cleanup-expired-tokens': {
-        # 'task': 'apps.accounts.tasks.cleanup_expired_tokens',  # Commented out - accounts app removed
+        'task': 'apps.auth.tasks.cleanup_expired_tokens',
+        'schedule': 3600.0,  # Run every hour
+    },
+    'cleanup-unverified-accounts': {
+        'task': 'apps.auth.tasks.cleanup_unverified_accounts',
+        'schedule': 86400.0,  # Run daily
+    },
+    'monitor-failed-login-attempts': {
+        'task': 'apps.auth.tasks.monitor_failed_login_attempts',
         'schedule': 3600.0,  # Run every hour
     },
     'send-event-reminders': {

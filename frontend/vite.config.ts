@@ -22,24 +22,23 @@ export default defineConfig({
   },
 
   server: {
-    // 1. Listen on all network interfaces so your phone/other devices can connect:
     host: '0.0.0.0',
-    port: process.env.NODE_ENV === 'development' && process.env.DOCKER_ENV ? 3000 : 5173,
-
-    // 2. Force WebSocket‐based HMR instead of EventSource
-    hmr: {
-      protocol: 'ws',
-      port: process.env.NODE_ENV === 'development' && process.env.DOCKER_ENV ? 24678 : undefined,
+    port: 3000,  // Frontend development port
+    
+    // Enable file watching with polling for Docker on Windows
+    watch: {
+      usePolling: true,
+      interval: 1000,
     },
 
-    // 3. (Optional) If you'd rather disable SSE completely and fall back to polling:
-    // watch: {
-    //   usePolling: true
-    // },
+    // HMR configuration
+    hmr: {
+      clientPort: 3000,
+    },
 
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
       },

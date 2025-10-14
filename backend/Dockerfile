@@ -100,5 +100,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health/ || exit 1
 
-# Production command
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "gevent", "backend.wsgi:application"]
+# Production command - Optimized for high concurrency (10K+ users)
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "16", "--worker-class", "gevent", "--worker-connections", "1000", "--timeout", "120", "--max-requests", "1000", "--max-requests-jitter", "100", "backend.wsgi:application"]

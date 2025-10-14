@@ -1,4 +1,4 @@
-# p# PrimePass - High-Ticket Event Management Platform
+# PrimePass - High-Ticket Event Management Platform
 
 A comprehensive monorepo for managing high-ticket events with advanced features including real-time notifications, tier-based access control, and sophisticated event management capabilities.
 
@@ -72,11 +72,11 @@ npm install
 npm run docker:up
 
 # 3. Access the application
-# Frontend: http://localhost:5173
+# Frontend: http://localhost:3000
 # Backend API: http://localhost:8000
 ```
 
-**That's it!** The `.env` file is pre-configured for development. No additional setup needed.
+**That's it!** For detailed setup including Google OAuth, see [docs/SETUP.md](./docs/SETUP.md).
 
 ### Development Options
 
@@ -98,13 +98,13 @@ npm run docker:down
 npm run dev
 
 # Access at:
-# Frontend: http://localhost:5173
+# Frontend: http://localhost:3000
 # Backend: http://localhost:8000
 ```
 
 ### Ports Reference
 
-- **Frontend**: http://localhost:5173 (Vite dev server)
+- **Frontend**: http://localhost:3000 (Vite dev server)
 - **Backend**: http://localhost:8000 (Django)
 - **Database**: localhost:5432 (PostgreSQL)
 - **PgBouncer**: localhost:6432 (Connection pooling)
@@ -548,8 +548,10 @@ npm run test:e2e
 
 ## 📚 Documentation
 
+- **[Setup Guide](./docs/SETUP.md)** - Complete setup instructions including Google OAuth
+- **[Deployment Guide](./docs/deployment.md)** - Production deployment instructions
+- **[Security Documentation](./docs/SECURITY.md)** - Security features and best practices
 - [API Documentation](./docs/api.md)
-- [Deployment Guide](./docs/deployment.md)
 
 ## 🤝 Contributing
 

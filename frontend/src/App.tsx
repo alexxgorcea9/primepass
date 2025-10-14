@@ -1,46 +1,82 @@
-import { useAuthStore } from '@store/authStore';
+import { useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import AuthGuard from '@components/Auth/AuthGuard';
+import { initCSRF } from '@utils/csrf';
+import { BASE_URL } from '@services/api';
+
+// Auth pages
+import Welcome from './pages/Auth/Welcome';
+import Login from './pages/Auth/Login';
+import Signup from './pages/Auth/Signup';
+import SelectAccountType from './pages/Auth/SelectAccountType';
+import ProfileSetup from './pages/Auth/ProfileSetup';
+import PaymentSetup from './pages/Auth/PaymentSetup';
+import OAuthCallback from './pages/Auth/OAuthCallback';
+
+// Organizer pages
+import OrganizerDashboard from './pages/Organizer/Dashboard';
+
+// Guest pages
+import Events from './pages/Guest/Events';
+
+// Team pages
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuthStore();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gr">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  // Initialize CSRF protection on app load
+  useEffect(() => {
+    initCSRF(BASE_URL);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-blue-950">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          PrimePass - Ready for Migration
-        </h1>
-        
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Authentication Status
-          </h2>
-          <p className="text-gray-600">
-            Authenticated: <span className="font-medium">{isAuthenticated ? 'Yes' : 'No'}</span>
-          </p>
-          <p className="text-gray-600 mt-2">
-            Loading: <span className="font-medium">{isLoading ? 'Yes' : 'No'}</span>
-          </p>
-        </div>
+  <AuthProvider>
+    <Routes>
 
-        <div className="mt-8 bg-blue-100 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">
-            Ready for Migration
-          </h3>
-          <p className="text-blue-700">
-            This is a minimal working React app with Tailwind CSS and Zustand auth store. 
-            You can now start migrating your components, pages, and other files manually.
-          </p>
-        </div>
-      </div>
-    </div>
+      {/* Public routes */}
+      <Route path='/' element={<Welcome />} />
+      <Route path='/login' element={<Login />} />
+      <Route
+        path='/select-account-type'
+        element={<SelectAccountType />}
+      />
+      <Route path='/signup' element={<Signup />} />
+
+
+      {/* Protected routes - require authentication */}
+      <Route path='/profile-setup' element={
+        <AuthGuard>
+          <ProfileSetup />
+        </AuthGuard>
+      } />
+      <Route path='/payment-setup' element={
+        <AuthGuard>
+          <PaymentSetup />
+        </AuthGuard>
+      } />
+
+      {/* OAuth callback routes */}
+      <Route path='/oauth/google/callback' element={<OAuthCallback />} />
+
+      {/* Organizer routes */}
+      <Route path='/:username/dashboard' element={
+        <AuthGuard allowedRoles={['organizer']}>
+          <OrganizerDashboard />
+        </AuthGuard>
+      } />
+
+
+      {/* Guest routes */}
+      <Route path='/events' element={
+        <AuthGuard allowedRoles={['guest']}>
+          <Events />
+        </AuthGuard>} />
+
+
+      {/* Team routes */}
+      <Route path='/:username/home' element={<div>Team Home (Coming Soon)</div>} />
+
+    </Routes>
+  </AuthProvider>
   );
 }
 

@@ -411,3 +411,15 @@ docker-compose.override.yml
 *.db
 *.sqlite
 *.sqlite3
+
+# ==============================================================================
+# TEST / DEBUG ARTIFACTS
+# ==============================================================================
+
+# Manual test files (curl, HTTP clients)
+cookies.txt
+login.json
+signup.json
+refresh.json
+test-*.json
+*-response.json

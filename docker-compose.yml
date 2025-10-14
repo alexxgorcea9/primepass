@@ -39,13 +39,13 @@ services:
       LISTEN_PORT: 5432
       POOL_MODE: transaction
       SERVER_RESET_QUERY: DISCARD ALL
-      MAX_CLIENT_CONN: 25
-      DEFAULT_POOL_SIZE: 5
-      MIN_POOL_SIZE: 0
-      RESERVE_POOL_SIZE: 0
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 50
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 10
       RESERVE_POOL_TIMEOUT: 5
-      MAX_DB_CONNECTIONS: 0
-      MAX_USER_CONNECTIONS: 0
+      MAX_DB_CONNECTIONS: 100
+      MAX_USER_CONNECTIONS: 100
       SERVER_ROUND_ROBIN: 1
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
       ADMIN_USERS: ${DATABASE_USER:-primepass_user}
@@ -99,8 +99,8 @@ services:
       - DOCKER_ENV=True
       - DEBUG=True
       - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-this-in-production}
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,backend
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,backend,192.168.100.133
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000,http://192.168.100.133:3000
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     volumes:
       - ./backend:/app
@@ -137,8 +137,8 @@ services:
     environment:
       - NODE_ENV=development
       - DOCKER_ENV=true
-      - VITE_API_URL=http://localhost:8000
-      - VITE_WS_URL=ws://localhost:8000
+      - VITE_API_URL=http://192.168.100.133:8000
+      - VITE_WS_URL=ws://192.168.100.133:8000
       - VITE_APP_NAME=PrimePass
       - VITE_APP_VERSION=1.0.0
     volumes:
@@ -148,7 +148,6 @@ services:
       - /app/node_modules
     ports:
       - "3000:3000"
-      - "24678:24678"  # HMR port for hot reloading
     depends_on:
       - backend
     networks:

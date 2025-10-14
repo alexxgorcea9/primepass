@@ -78,7 +78,6 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "apps.legacy",
     "apps.auth",
 ]
 
@@ -93,7 +92,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'allauth.account.middleware.AccountMiddleware',  # Temporarily commented
-    "apps.legacy.middleware.JWTAuthMiddleware",
+    # "apps.auth.middleware.JWTAuthMiddleware",  # Deprecated - JWT handled by CookieJWTAuthentication
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',
@@ -149,8 +148,10 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'CONNECTION_POOL_KWARGS': {
-                'max_connections': 50,
+                'max_connections': 200,
                 'retry_on_timeout': True,
+                'socket_keepalive': True,
+                'socket_connect_timeout': 5,
             },
             'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',
             'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
@@ -169,7 +170,26 @@ SESSION_COOKIE_AGE = config('SESSION_CACHE_TTL', default=86400, cast=int)
 # AUTHENTICATION CONFIGURATION
 # ==============================================================================
 
-AUTH_USER_MODEL = 'backend.User'  # Temporarily commented until accounts app is created
+AUTH_USER_MODEL = 'primepass_auth.User'
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 12,
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
 
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesBackend',
@@ -190,7 +210,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.auth.authentication.CookieJWTAuthentication',  # Custom cookie-based JWT auth
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -217,7 +237,7 @@ REST_FRAMEWORK = {
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(seconds=config('JWT_ACCESS_TOKEN_LIFETIME', default=3600, cast=int)),
+    'ACCESS_TOKEN_LIFETIME': timedelta(seconds=config('JWT_ACCESS_TOKEN_LIFETIME', default=900, cast=int)),  # 15 minutes
     'REFRESH_TOKEN_LIFETIME': timedelta(seconds=config('JWT_REFRESH_TOKEN_LIFETIME', default=86400, cast=int)),
     'ROTATE_REFRESH_TOKENS': config('JWT_ROTATE_REFRESH_TOKENS', default=True, cast=bool),
     'BLACKLIST_AFTER_ROTATION': True,
@@ -237,6 +257,27 @@ SIMPLE_JWT = {
 }
 
 # ==============================================================================
+# OAUTH CONFIGURATION
+# ==============================================================================
+
+# Google OAuth
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_REDIRECT_URI = config('GOOGLE_REDIRECT_URI', default='http://localhost:3000/oauth/google/callback')
+
+# Apple Sign In OAuth
+APPLE_CLIENT_ID = config('APPLE_CLIENT_ID', default='')
+APPLE_TEAM_ID = config('APPLE_TEAM_ID', default='')
+APPLE_KEY_ID = config('APPLE_KEY_ID', default='')
+APPLE_PRIVATE_KEY = config('APPLE_PRIVATE_KEY', default='')
+APPLE_REDIRECT_URI = config('APPLE_REDIRECT_URI', default='http://localhost:3000/oauth/apple/callback')
+
+# Instagram Basic Display API OAuth
+INSTAGRAM_APP_ID = config('INSTAGRAM_APP_ID', default='')
+INSTAGRAM_APP_SECRET = config('INSTAGRAM_APP_SECRET', default='')
+INSTAGRAM_REDIRECT_URI = config('INSTAGRAM_REDIRECT_URI', default='http://localhost:3000/oauth/instagram/callback')
+
+# ==============================================================================
 # CORS CONFIGURATION
 # ==============================================================================
 
@@ -248,6 +289,39 @@ CORS_ALLOWED_ORIGINS = config(
 
 CORS_ALLOW_CREDENTIALS = config('CORS_ALLOW_CREDENTIALS', default=True, cast=bool)
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
+
+# Allow CSRF token header in CORS requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',  # Important: Allow CSRF token header
+    'x-requested-with',
+]
+
+# ==============================================================================
+# CSRF CONFIGURATION
+# ==============================================================================
+
+# CSRF cookie settings
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_HTTPONLY = False  # Must be False so JavaScript can read it
+CSRF_COOKIE_SAMESITE = 'Lax'  # Can be 'Strict' or 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG  # True in production (HTTPS only)
+CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens
+CSRF_COOKIE_AGE = 31449600  # 1 year
+
+# Trusted origins for CSRF (important for cross-origin requests)
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
 
 # ==============================================================================
 # CHANNELS CONFIGURATION (WebSockets)
@@ -330,6 +404,12 @@ X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='DENY')
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # 1 hour
 AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+
+# Django Rate Limiting
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+# Don't raise exceptions, just set request.limited = True
+RATELIMIT_VIEW = 'django_ratelimit.decorators.is_ratelimited'
 
 # ==============================================================================
 # LOGGING CONFIGURATION

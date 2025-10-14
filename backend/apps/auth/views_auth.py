@@ -23,6 +23,12 @@ class TokenRefreshView(APIView):
 
         try:
             refresh = RefreshToken(refresh_token)
+            
+            # Verify token is not expired
+            from datetime import datetime
+            if refresh.get('exp') and datetime.fromtimestamp(refresh.get('exp')) < datetime.now():
+                return Response({"detail": "Refresh token has expired."},
+                                status=status.HTTP_401_UNAUTHORIZED)
 
             # default: no rotation
             out_refresh = str(refresh)
@@ -45,15 +51,24 @@ class TokenRefreshView(APIView):
                 out_refresh = str(new_refresh)
                 access_token = str(new_refresh.access_token)
 
-            # build response
+            # build response (no tokens in body)
             resp = Response({
-                "access": access_token,
-                # include refresh only in DEBUG to avoid leaking it to JS in prod
-                "refresh": out_refresh if settings.DEBUG else None,
+                "success": True,
+                "message": "Token refreshed successfully"
             })
 
-            # set cookie (use max_age only; no expires)
-            cookie_params = {
+            # Set access token cookie (15 minutes)
+            resp.set_cookie(
+                key="access_token",
+                value=access_token,
+                max_age=15 * 60,  # 15 minutes
+                secure=not settings.DEBUG,
+                httponly=True,
+                samesite="Lax",
+            )
+            
+            # Set refresh token cookie
+            refresh_cookie_params = {
                 "key": "refresh_token",
                 "value": out_refresh,
                 "secure": not settings.DEBUG,
@@ -61,8 +76,8 @@ class TokenRefreshView(APIView):
                 "samesite": "Lax",
             }
             if remember_me:
-                cookie_params["max_age"] = 7 * 24 * 60 * 60  # 7 days
-            resp.set_cookie(**cookie_params)
+                refresh_cookie_params["max_age"] = 7 * 24 * 60 * 60  # 7 days
+            resp.set_cookie(**refresh_cookie_params)
             return resp
 
         except TokenError as e:

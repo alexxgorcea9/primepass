@@ -32,7 +32,7 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # Must be False so JavaScript can read CSRF token
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # ==============================================================================
@@ -55,13 +55,14 @@ DATABASES['default']['CONN_MAX_AGE'] = 60
 # CACHE CONFIGURATION
 # ==============================================================================
 
-# Production Redis configuration
+# Production Redis configuration - Optimized for 10K+ concurrent users
 CACHES['default']['OPTIONS'].update({
     'CONNECTION_POOL_KWARGS': {
-        'max_connections': 100,
+        'max_connections': 1000,
         'retry_on_timeout': True,
         'socket_keepalive': True,
         'socket_keepalive_options': {},
+        'socket_connect_timeout': 5,
     },
     'IGNORE_EXCEPTIONS': False,
 })
