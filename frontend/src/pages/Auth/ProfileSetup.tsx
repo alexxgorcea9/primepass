@@ -23,7 +23,7 @@ interface ProfileData {
 const ProfileSetup: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, getVerificationStatus, markEmailVerified } = useAuth();
   const [role, setRole] = useState<string>('guest');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +35,37 @@ const ProfileSetup: React.FC = () => {
     phone: '',
     bio: '',
   });
+
+  // ✅ Before redirecting away, confirm verification with the server once
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!user) return;
+
+      if (user.email_verified === false) {
+        try {
+          const s = await getVerificationStatus();
+          if (!cancelled) {
+            if (s.email_verified) {
+              // Mark locally to prevent future false negatives
+              markEmailVerified();
+            } else {
+              navigate('/verify-email', { replace: true, state: { role, email: user.email } });
+            }
+          }
+        } catch {
+          if (!cancelled) {
+            navigate('/verify-email', { replace: true, state: { role, email: user.email } });
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, navigate, role, getVerificationStatus, markEmailVerified]);
 
   // Set user role from navigation state, query params, or user context
   useEffect(() => {

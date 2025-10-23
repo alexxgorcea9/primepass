@@ -26,7 +26,7 @@ def send_verification_email(user, verification_token):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         verification_url = f"{frontend_url}/verify-email?token={verification_token}&email={user.email}"
         
         subject = "Verify your PrimePass email address"
@@ -125,7 +125,7 @@ def send_verification_success_email(user):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         login_url = f"{frontend_url}/login"
         
         subject = "Email verified successfully - Welcome to PrimePass!"
@@ -210,7 +210,7 @@ def send_account_lockout_email(user):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         
         subject = "Security Alert: Account Temporarily Locked - PrimePass"
         

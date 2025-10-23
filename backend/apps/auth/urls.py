@@ -3,6 +3,7 @@ from .views import (
     SignupView, login, LogoutView, LogoutAllView, user_profile,
     verify_email, resend_verification_email
 )
+from .views_verification import VerificationStatusView
 from .views_auth import TokenRefreshView
 from .views_oauth import GoogleAuthView, google_callback
 from .csrf import get_csrf_token
@@ -23,7 +24,8 @@ urlpatterns = [
     # EMAIL VERIFICATION
     # ==============================================================================
     path("verify-email/", verify_email, name="verify_email"),
-    path("resend-verification/", resend_verification_email, name="resend_verification"),
+    path("resend-verification-email/", resend_verification_email, name="resend_verification_email"),
+    path("verification-status/", VerificationStatusView.as_view(), name="verification_status"),
 
     # ==============================================================================
     # CSRF PROTECTION
