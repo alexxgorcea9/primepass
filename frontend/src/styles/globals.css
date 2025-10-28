@@ -163,7 +163,7 @@
   --color-accent1: #9A5CA3;
   --color-accent2: #D9B3E2;
   --color-accent3: #F4C05F;
-  --color--BG-1: #F7F7F70D;
+  --color-BG-1: #F7F7F70D;
   --color-grey: #B4B8B3;
   --color-BG-2: #F7F7F733;
   
@@ -188,6 +188,10 @@
   
   --text-2xl: 1.5rem;       /* 24px */
   --text-2xl-lh: 2.25rem;   /* 36px */
+  
+  /* Gradients */
+  --gradient-accent: linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(247, 247, 247, 0.30) 100%);
+  --gradient-main: linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(244, 192, 95, 0.30) 100%)
 }
 
 /* ==============================================================================
@@ -262,6 +266,10 @@
     font-size: var(--text-2xl);
     line-height: var(--text-2xl-lh);
     font-weight: 400;
+  }
+  
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
   }
 }
 

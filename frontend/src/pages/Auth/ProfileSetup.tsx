@@ -5,7 +5,7 @@ import Input from '../../components/Auth/Input';
 import Button from '../../components/Auth/Button';
 import ImageUpload from '../../components/Auth/ImageUpload';
 import BannerUpload from '../../components/Auth/BannerUpload';
-import LongTextInput from '@components/Auth/LongTextInput';
+import LongTextInput from '@components/Organizer/CreateEvent/Details/LongTextInput';
 import PhoneInput from '../../components/Auth/PhoneInput';
 import DatePicker from '../../components/Auth/DatePicker';
 import ellipse from '../../assets/Ellipse 13.svg';

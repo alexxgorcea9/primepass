@@ -48,6 +48,9 @@ urlpatterns = [
     
     # Django Allauth
     # path('accounts/', include('allauth.urls')),  # Commented out - allauth not configured
+
+    # Events API
+    path('api/', include('apps.events.urls')),
 ]
 
 # Development URLs

@@ -58,10 +58,12 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Create an axios instance with proper configuration
+// Use empty base URL to leverage Vite's proxy configuration
+// This allows the app to work regardless of which IP/hostname is used to access it
+const API_BASE_URL = '';
 const axiosInstance = axios.create({
-  baseURL: '', // Use relative URLs to work with the Vite proxy
-  withCredentials: true, // Important: send cookies with requests
+  baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

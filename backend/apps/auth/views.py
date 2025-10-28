@@ -458,3 +458,47 @@ def resend_verification_email(request):
             'error': 'email_send_failed',
             'message': 'Failed to send verification email. Please try again later.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_organizer_by_user_id(request, user_id):
+    """
+    Get organizer data by user ID.
+    Returns organizer-specific information for users with role='organizer'.
+    """
+    try:
+        user = User.objects.get(id=user_id, role='organizer')
+        
+        # Handle date_joined serialization
+        created_at = None
+        if user.date_joined:
+            if hasattr(user.date_joined, 'isoformat'):
+                created_at = user.date_joined.isoformat()
+            else:
+                created_at = str(user.date_joined)
+        
+        # Return organizer data in the format expected by the frontend
+        organizer_data = {
+            'id': user.id,
+            'user_id': user.id,
+            'organization_name': user.name or '',
+            'phone': user.phone_number or '',
+            'bio': user.organizer_bio or '',
+            'created_at': created_at,
+        }
+        
+        return Response(organizer_data, status=status.HTTP_200_OK)
+    
+    except User.DoesNotExist:
+        logger.warning(f"Organizer not found for user ID: {user_id}")
+        return Response({
+            'error': 'not_found',
+            'message': 'Organizer not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error fetching organizer data: {str(e)}")
+        return Response({
+            'error': 'server_error',
+            'message': 'Failed to fetch organizer data'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

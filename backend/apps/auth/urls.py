@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     SignupView, login, LogoutView, LogoutAllView, user_profile,
-    verify_email, resend_verification_email
+    verify_email, resend_verification_email, get_organizer_by_user_id
 )
 from .views_auth import TokenRefreshView
 from .views_oauth import GoogleAuthView, google_callback
@@ -18,6 +18,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="logout"),
     path("logout-all/", LogoutAllView.as_view(), name="logout-all"),
     path("user-profile/", user_profile, name="user_profile"),
+    path("organizers/user/<int:user_id>/", get_organizer_by_user_id, name="get_organizer"),
 
     # ==============================================================================
     # EMAIL VERIFICATION

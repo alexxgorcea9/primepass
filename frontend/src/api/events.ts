@@ -1,0 +1,212 @@
+import axios from 'axios';
+
+// Use relative URL to leverage Vite's proxy configuration
+const API_BASE_URL = '/api';
+
+// Axios instance with credentials for cookie-based auth
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true, // Important: sends cookies with requests
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add CSRF token to requests if available
+apiClient.interceptors.request.use((config) => {
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+
+  if (csrfToken) {
+    config.headers['X-CSRFToken'] = csrfToken;
+  }
+
+  return config;
+});
+
+// Types based on your Django serializer
+export interface Event {
+  id: number;
+  organizer: {
+    id: number;
+  };
+  title: string;
+  shortDescription: string;
+  location: string;
+  heroImageUrl: string;
+  date: string;
+  time: string;
+  isFinished: boolean;
+  mediaCount: number;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+// API functions
+export const eventsApi = {
+  // Get upcoming events (not finished) - using query params on main endpoint
+  getUpcoming: async (page = 1, pageSize = 20): Promise<PaginatedResponse<Event>> => {
+    try {
+      const response = await apiClient.get('/events/', {
+        params: {
+          page,
+          page_size:pageSize,
+          is_finished: false, // Filter for upcoming events
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching upcoming events:', error);
+      throw error;
+    }
+  },
+
+  // Get finished events - using query params on main endpoint
+  getFinished: async (page = 1, pageSize = 20): Promise<PaginatedResponse<Event>> => {
+    try {
+      const response = await apiClient.get('/events/', {
+        params: {
+          page,
+          page_size:pageSize,
+          is_finished: true, // Filter for finished events
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching finished events:', error);
+      throw error;
+    }
+  },
+
+  // Get current user's events (requires authentication)
+  getMyEvents: async (page = 1, pageSize = 20, isFinished?: boolean): Promise<PaginatedResponse<Event>> => {
+    try {
+      const params: any = { 
+        page, 
+        page_size: pageSize,
+      };
+      
+      // Add is_finished filter if specified
+      if (isFinished !== undefined) {
+        params.is_finished = isFinished;
+      }
+      
+      const response = await apiClient.get('/events/my_events/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my events:', error);
+      throw error;
+    }
+  },
+
+  // Create event with all related data (bulk creation)
+  // Supports multipart/form-data for image upload
+  bulkCreate: async (eventData: BulkEventCreateData): Promise<any> => {
+    try {
+      const formData = new FormData();
+      
+      // Add basic event fields
+      formData.append('title', eventData.title);
+      if (eventData.description) formData.append('description', eventData.description);
+      if (eventData.shortDescription) formData.append('shortDescription', eventData.shortDescription);
+      formData.append('location', eventData.location);
+      formData.append('date', eventData.date);
+      formData.append('time', eventData.time);
+      
+      // Add hero image file if present
+      if (eventData.heroImage) {
+        formData.append('heroImage', eventData.heroImage);
+      }
+      
+      // Add tiers as JSON string
+      formData.append('tiers', JSON.stringify(eventData.tiers));
+      
+      // Add media as JSON string if present
+      if (eventData.media && eventData.media.length > 0) {
+        formData.append('media', JSON.stringify(eventData.media));
+      }
+      
+      // Get CSRF token from cookies
+      const csrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+      
+      // Create a custom config for FormData request
+      // Don't set Content-Type - axios will set it automatically with boundary
+      const response = await axios.post(`${API_BASE_URL}/events/bulk_create/`, formData, {
+        withCredentials: true,
+        headers: {
+          // Include CSRF token but let axios handle Content-Type
+          ...(csrfToken && { 'X-CSRFToken': csrfToken }),
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating event:', error);
+      throw error;
+    }
+  },
+};
+
+// Type definitions for bulk event creation
+export interface BulkEventCreateData {
+  title: string;
+  description?: string;
+  shortDescription?: string;
+  location: string;
+  date: string; // YYYY-MM-DD format
+  time: string; // HH:MM:SS format
+  heroImage?: File; // Actual image file for upload
+  tiers: TierData[];
+  media?: MediaData[];
+}
+
+export interface TierData {
+  name: string;
+  icon?: string;
+  gradientId: string;
+  specialRequests?: boolean;
+  waves: WaveData[];
+  privileges: PrivilegeData[];
+  addOns: AddOnData[];
+  tables: TableData[];
+}
+
+export interface WaveData {
+  name: string;
+  ticketCount: number;
+  price: number;
+}
+
+export interface PrivilegeData {
+  name: string;
+  description: string;
+}
+
+export interface AddOnData {
+  name: string;
+  description: string;
+  price: number;
+  availability: number | 'Unlimited';
+}
+
+export interface TableData {
+  name: string;
+  count: number;
+  seats: number;
+  minimumSpend: number;
+}
+
+export interface MediaData {
+  url: string;
+  type: 'image' | 'video';
+  isFeatured?: boolean;
+}

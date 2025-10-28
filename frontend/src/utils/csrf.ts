@@ -31,12 +31,13 @@ export function getCSRFToken(): string | null {
  * This should be called when the application starts to ensure
  * a CSRF token is available for subsequent requests.
  * 
- * @param baseURL - The base URL of the API (default: http://localhost:8000)
+ * Uses relative URL to leverage Vite's proxy configuration.
+ * 
  * @returns Promise that resolves when CSRF token is fetched
  */
-export async function initCSRF(baseURL: string = 'http://localhost:8000'): Promise<void> {
+export async function initCSRF(): Promise<void> {
   try {
-    const response = await fetch(`${baseURL}/api/v1/csrf/`, {
+    const response = await fetch('/api/v1/csrf/', {
       method: 'GET',
       credentials: 'include', // Important: Include cookies
       headers: {

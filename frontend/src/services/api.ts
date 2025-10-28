@@ -1,11 +1,10 @@
 import axios from 'axios';
 import { getCSRFToken } from '../utils/csrf';
 
-// Configure API base URL based on environment
-const BASE_URL =
-  process.env.NODE_ENV === 'development'
-    ? 'http://localhost:8000'
-    : import.meta.env.VITE_API_BASE_URL || '';
+// Use empty base URL to use relative paths
+// This leverages Vite's proxy configuration in development
+// and allows the app to work with any domain in production
+const BASE_URL = '';
 
 // Create axios instance with cookie-based authentication
 const axiosInstance = axios.create({

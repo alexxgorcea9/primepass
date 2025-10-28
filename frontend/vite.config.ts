@@ -28,17 +28,28 @@ export default defineConfig({
     // Enable file watching with polling for Docker on Windows
     watch: {
       usePolling: true,
-      interval: 1000,
+      interval: 500,  // Check more frequently
+      ignored: ['**/node_modules/**', '**/.git/**'],
     },
 
-    // HMR configuration
+    // HMR configuration for local network access
     hmr: {
+      // Always use the network IP so HMR works from any device on the network
+      host: '192.168.100.133',
       clientPort: 3000,
+      protocol: 'ws',
+      timeout: 30000,
     },
 
     proxy: {
       '/api': {
-        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://127.0.0.1:8000',
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.100.133:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,  // Enable WebSocket proxying
+      },
+      '/media': {
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.100.133:8000',
         changeOrigin: true,
         secure: false,
       },

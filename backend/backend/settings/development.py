@@ -11,8 +11,8 @@ from .base import *
 # DEBUG SETTINGS
 # ==============================================================================
 
-DEBUG = False
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend']
+DEBUG = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend', '192.168.100.133']
 
 # ==============================================================================
 # DEVELOPMENT APPS
@@ -22,9 +22,6 @@ INSTALLED_APPS += [
     'django_extensions',
     'debug_toolbar',
     'silk',
-#    "rest_framework_simplejwt.token_blacklist",
-#    "apps.legacy",
- #   "apps.auth",
 
 ]
 
@@ -35,7 +32,6 @@ INSTALLED_APPS += [
 MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'silk.middleware.SilkyMiddleware',
-    #"apps.legacy.middleware.JWTAuthMiddleware",
 ] + MIDDLEWARE
 
 # ==============================================================================
@@ -114,7 +110,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:5173',  # Vite default port
     'http://127.0.0.1:5173',
+    'http://192.168.100.133:3000',  # Local network access
+    'http://192.168.100.133:5173',  # Local network Vite
 ]
+
+# Additional CORS settings for mobile access
+CORS_ALLOW_CREDENTIALS = True
 
 # ==============================================================================
 # LOGGING CONFIGURATION
@@ -145,6 +146,21 @@ SECURE_PROXY_SSL_HEADER = None
 SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
+
+# CSRF settings for local network access
+# Use environment variable if set (for Docker), otherwise use defaults
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://192.168.100.133:3000,http://192.168.100.133:5173,http://192.168.100.133:8000',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
+
+# Cookie settings for cross-device access on same network
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_DOMAIN = None  # Allow cookies across local network IPs
 
 # ==============================================================================
 # CELERY CONFIGURATION

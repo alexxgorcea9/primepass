@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import AuthGuard from '@components/Auth/AuthGuard';
 import { initCSRF } from '@utils/csrf';
-import { BASE_URL } from '@services/api';
 
 // Auth pages
 import Welcome from './pages/Auth/Welcome';
@@ -16,6 +15,7 @@ import OAuthCallback from './pages/Auth/OAuthCallback';
 
 // Organizer pages
 import OrganizerDashboard from './pages/Organizer/Dashboard';
+import CreateEvent from './pages/Organizer/CreateEvent';
 
 // Guest pages
 import Events from './pages/Guest/Events';
@@ -25,7 +25,7 @@ import Events from './pages/Guest/Events';
 function App() {
   // Initialize CSRF protection on app load
   useEffect(() => {
-    initCSRF(BASE_URL);
+    initCSRF();
   }, []);
 
   return (
@@ -61,6 +61,11 @@ function App() {
       <Route path='/:username/dashboard' element={
         <AuthGuard allowedRoles={['organizer']}>
           <OrganizerDashboard />
+        </AuthGuard>
+      } />
+      <Route path='/create-event' element={
+        <AuthGuard allowedRoles={['organizer']}>
+          <CreateEvent />
         </AuthGuard>
       } />
 

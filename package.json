@@ -62,5 +62,9 @@
     "postgresql"
   ],
   "author": "Your Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "embla-carousel-react": "^8.6.0",
+    "motion": "^12.23.24"
+  }
 }
