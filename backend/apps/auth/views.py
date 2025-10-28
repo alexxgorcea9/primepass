@@ -21,7 +21,7 @@ from .cache import get_cached_user, invalidate_user_cache
 from .emails import send_verification_email, send_verification_success_email, send_account_lockout_email
 from .models import User
 from .serializers import UserSerializer
-
+from .permissions import IsEmailVerified
 logger = logging.getLogger(__name__)
 
 ROLE_CHOICES = ['guest', 'organizer', 'team']
@@ -100,7 +100,8 @@ class SignupView(APIView):
                     "email_verified": user.email_verified
                 },
                 "message": "Account created successfully. Please check your email to verify your account.",
-                "email_sent": email_sent
+                "email_sent": email_sent,
+                "onboarding_state": "is_waiting"
             }, status=status.HTTP_201_CREATED)
 
             # Set both tokens as HTTP-only cookies
@@ -256,7 +257,7 @@ def login(request):
     return response
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsEmailVerified])
 def user_profile(request):
     user = request.user
     profile_picture_url = None

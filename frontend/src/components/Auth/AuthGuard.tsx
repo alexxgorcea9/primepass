@@ -1,26 +1,26 @@
-import React from 'react';
+// src/routes/AuthGuard.tsx
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: Array<'organizer' | 'team' | 'guest'>;
+  mustBeVerified?: boolean;
 }
 
-/**
- * Universal auth guard component that protects routes with authentication and optional role checking.
- * - Always checks authentication first, redirects to login if not authenticated
- * - If allowedRoles is provided, also checks user role and silently redirects if not authorized
- * - If allowedRoles is not provided, only authentication is required
- */
 const AuthGuard: React.FC<RoleProtectedRouteProps> = ({
-  children, 
-  allowedRoles 
+  children,
+  allowedRoles,
+  mustBeVerified = false,
 }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, getVerificationStatus, markEmailVerified } = useAuth();
   const location = useLocation();
+  const [checkingVerify, setCheckingVerify] = useState(false);
 
-  // Show loading state while checking authentication
+  // Public: /verify-email always allowed (both awaiting + link-landing modes)
+  if (location.pathname.startsWith('/verify-email')) return <>{children}</>;
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
@@ -29,19 +29,72 @@ const AuthGuard: React.FC<RoleProtectedRouteProps> = ({
     );
   }
 
-  // Redirect to welcome page if not authenticated
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Check if user has the required role (only if allowedRoles is specified)
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Silently redirect back to where they came from, or to home page
-    const from = location.state?.from?.pathname || '/';
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    const from = (location.state as any)?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }
 
-  // User is authenticated and (if specified) has the required role
+  // If the route requires verification but client says false, double-check server
+  if (mustBeVerified && !user.email_verified) {
+  const justVerified = sessionStorage.getItem('pp_just_verified') === '1';
+  if (justVerified) {
+    // allow this navigation once; clean up the latch
+    sessionStorage.removeItem('pp_just_verified');
+
+    // in the background, confirm + hydrate so future checks are clean
+    (async () => {
+      try {
+        const s = await getVerificationStatus();
+        if (s.email_verified) {
+          markEmailVerified();
+          // optional: if you have a refresh here, call it
+          // await refreshUserProfile(); // if exposed here
+        }
+      } catch {}
+    })();
+
+    return <>{children}</>;
+  }
+
+  // Make a single round-trip check
+  if (!checkingVerify) {
+    setCheckingVerify(true);
+    (async () => {
+      try {
+        const s = await getVerificationStatus();
+        if (s.email_verified) {
+          markEmailVerified(); // update local user state so future checks pass
+        }
+      } catch {
+        // ignore – we’ll redirect below
+      } finally {
+        setCheckingVerify(false);
+      }
+    })();
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
+        <div className="text-white">Checking verification…</div>
+      </div>
+    );
+  }
+
+  // After check, if still unverified -> redirect to verify flow
+  if (!user.email_verified) {
+    return (
+      <Navigate
+        to="/verify-email"
+        state={{ from: location, role: user.role, email: user.email }}
+        replace
+      />
+    );
+  }
+}
+
+
   return <>{children}</>;
 };
 

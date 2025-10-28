@@ -12,6 +12,8 @@ import SelectAccountType from './pages/Auth/SelectAccountType';
 import ProfileSetup from './pages/Auth/ProfileSetup';
 import PaymentSetup from './pages/Auth/PaymentSetup';
 import OAuthCallback from './pages/Auth/OAuthCallback';
+import EmailVerification from './pages/Auth/EmailVerification';
+
 
 // Organizer pages
 import OrganizerDashboard from './pages/Organizer/Dashboard';
@@ -40,11 +42,13 @@ function App() {
         element={<SelectAccountType />}
       />
       <Route path='/signup' element={<Signup />} />
+      <Route path="/verify-email" element={<EmailVerification />} />
+
 
 
       {/* Protected routes - require authentication */}
       <Route path='/profile-setup' element={
-        <AuthGuard>
+        <AuthGuard allowedRoles={['guest', 'organizer', 'team']}>
           <ProfileSetup />
         </AuthGuard>
       } />

@@ -8,6 +8,18 @@ import React, {
 import axios from 'axios';
 import organizerService from '../services/organizerService';
 
+type VerificationStatus = {
+  email_verified: boolean;
+  state: 'is_waiting' | 'verified';
+  next_step?: string | null;
+  resend_available_in?: number;
+};
+
+type VerifyEmailResponse = {
+  message?: string;
+  email_verified: boolean;
+};
+
 // Define the shape of your user data
 export interface User {
   id: number;
@@ -15,6 +27,7 @@ export interface User {
   role: 'organizer' | 'team' | 'guest';
   name: string;
   profile_picture: string;
+  email_verified?: boolean;
 }
 
 export interface AuthResponse {
@@ -24,22 +37,29 @@ export interface AuthResponse {
 // Storage keys (only for user data, tokens are in HTTP-only cookies)
 const USER_ROLE_KEY = 'auth_user_role';
 const USER_DATA_KEY = 'auth_user_data';
+const ensureCsrf = async () => {
+  try {
+    await axiosInstance.get('/api/v1/csrf/');
+  } catch {
+    // no-op; if CSRF endpoint isn’t there you’ll still be fine for GETs
+  }
+};
 
 // Define the context type
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+
   login: (email: string, password: string) => Promise<AuthResponse>;
-  signup: (
-    email: string,
-    password: string,
-    role: string
-  ) => Promise<AuthResponse>;
+  signup: (email: string, password: string, role: string) => Promise<AuthResponse>;
   logout: () => void;
+
   userRole: string | null;
   updateProfile: (profileData: any) => Promise<User>;
   checkEmailExists: (email: string) => Promise<boolean>;
+
+  // OAuth
   loginWithGoogle: () => Promise<void>;
   loginWithInstagram: () => Promise<void>;
   loginWithApple: () => Promise<void>;
@@ -50,6 +70,15 @@ interface AuthContextType {
     userData?: any,
     idToken?: string
   ) => Promise<AuthResponse>;
+
+  // Email verification
+  verifyEmailToken: (token: string, email?: string) => Promise<VerifyEmailResponse>;
+  resendVerificationEmail: (email: string) => Promise<void>;
+  getVerificationStatus: () => Promise<VerificationStatus>;
+  markEmailVerified: () => void;
+
+  // NEW: for email-link flow to hydrate this tab/session
+  refreshUserProfile: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,12 +87,12 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Use empty base URL to leverage Vite's proxy configuration
-// This allows the app to work regardless of which IP/hostname is used to access it
-const API_BASE_URL = '';
+// Create an axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
+  baseURL: '', // Use relative URLs to work with your dev proxy
+  withCredentials: true, // Important: send cookies with requests
+  xsrfCookieName: 'csrftoken', // Django default
+  xsrfHeaderName: 'X-CSRFToken',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,9 +100,7 @@ const axiosInstance = axios.create({
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Start with no user - will be populated after backend verification
-  // This prevents stale cached data from appearing as authenticated
   const [user, setUser] = useState<User | null>(null);
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const [userRole, setUserRole] = useState<string | null>(() => {
@@ -82,7 +109,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.getItem(USER_ROLE_KEY)
     );
   });
-
+const markEmailVerified = () => {
+  setUser(prev => (prev ? { ...prev, email_verified: true } : prev));
+};
   // Flag to prevent recursive logout calls
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
@@ -105,17 +134,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // If the error is 401 and we haven't tried refreshing yet
-      if (
-        error.response?.status === 401 &&
-        !originalRequest._retry
-      ) {
+      if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
         try {
           // Try to refresh the token (cookies are sent automatically)
           const res = await axiosInstance.post('/api/token/refresh/', {});
-
-          if (res.data.success) {
+          if (res.data?.success) {
             // Cookies are updated automatically, just retry the request
             return axiosInstance(originalRequest);
           }
@@ -131,79 +156,103 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   );
 
-  // Helper function to clear all auth data
+  // Helper: clear all local auth data (cookies are managed by backend)
   const clearAuthData = () => {
     setUser(null);
     setUserRole(null);
-
-    // Clear user data from storage (tokens are in cookies and cleared by backend)
-    const keysToRemove = [
-      USER_ROLE_KEY,
-      USER_DATA_KEY,
-    ];
-    keysToRemove.forEach(key => {
+    [USER_ROLE_KEY, USER_DATA_KEY].forEach(key => {
       sessionStorage.removeItem(key);
       localStorage.removeItem(key);
     });
   };
 
-  // Enhanced token validation on app initialization
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const storedUser =
-        sessionStorage.getItem(USER_DATA_KEY) ||
-        localStorage.getItem(USER_DATA_KEY);
-      const storedRole =
-        sessionStorage.getItem(USER_ROLE_KEY) ||
-        localStorage.getItem(USER_ROLE_KEY);
-
-      // Always verify with backend before trusting cached data
-      // This prevents stale cached data from appearing as authenticated
-      try {
-        // Try to fetch user profile - this will validate the session
-        await fetchUserProfile();
-      } catch (error) {
-        console.warn('Session validation failed:', error);
-        // Clear any stale cached data
-        clearAuthData();
-      }
-      
-      setIsLoading(false);
-    };
-
-    checkAuthStatus();
-  }, []);
-
-  // Fetch user profile from API
-  const fetchUserProfile = async () => {
+  // Helper: prime CSRF cookie so POST/PUT/DELETE succeed
+  const primeCsrf = async () => {
     try {
-      const res = await axiosInstance.get('/api/user-profile/');
-      const userData = res.data;
-
-      setUser(userData);
-      setUserRole(userData.role);
-
-      // Store user data in session storage
-      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-      sessionStorage.setItem(USER_ROLE_KEY, userData.role);
-
-      // Also in local storage for persistence
-      localStorage.setItem(USER_ROLE_KEY, userData.role);
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
-      throw error;
+      await axiosInstance.get('/api/v1/csrf/');
+    } catch (e) {
+      // non-fatal in dev
     }
   };
+
+  // Fetch user profile from API and update state/storage
+  const refreshUserProfile = async (): Promise<User | null> => {
+  try {
+    await ensureCsrf();
+    const res = await axiosInstance.get('/api/user-profile/');
+    const userData = res.data as User;
+
+    setUser(userData);
+    setUserRole(userData.role);
+
+    sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    sessionStorage.setItem(USER_ROLE_KEY, userData.role);
+    localStorage.setItem(USER_ROLE_KEY, userData.role);
+
+    return userData;
+  } catch (err) {
+    setUser(null);       // clear stale client state if the call fails
+    setUserRole(null);
+    return null;
+  }
+};
+
+  // Enhanced token validation on app initialization
+  useEffect(() => {
+  const checkAuthStatus = async () => {
+    try {
+      await primeCsrf();
+
+      // Try to confirm session via verification endpoint (works even when unverified)
+      let sessionOk = false;
+      try {
+        await getVerificationStatus();
+        sessionOk = true;
+      } catch {
+        sessionOk = false;
+      }
+
+      if (sessionOk) {
+        // If we have a cached user (from signup/login), keep it;
+        // If verified now, refresh full profile; if not verified, skip gracefully.
+        const cachedUserRaw =
+          sessionStorage.getItem(USER_DATA_KEY) || localStorage.getItem(USER_DATA_KEY);
+        const cachedUser = cachedUserRaw ? JSON.parse(cachedUserRaw) : null;
+
+        if (cachedUser) {
+          setUser(cachedUser);
+          setUserRole(cachedUser.role);
+        }
+
+        // Attempt full refresh (will succeed only if verified)
+        try {
+          await refreshUserProfile();
+        } catch {
+          // ignored — likely unverified; user stays in waiting state
+        }
+      } else {
+        clearAuthData();
+      }
+    } catch {
+      clearAuthData();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  checkAuthStatus();
+}, []);
 
   const login = async (
     email: string,
     password: string
   ): Promise<AuthResponse> => {
     try {
+      await primeCsrf();
       const res = await axiosInstance.post('/api/login/', { email, password });
 
       // Backend sets cookies and returns user data
-      if (!res.data.user) {
+      if (!res.data?.user) {
         throw new Error('Invalid response format from server');
       }
 
@@ -218,29 +267,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // If the user is an organizer, immediately fetch and store organizer data
       if (res.data.user.role === 'organizer' && res.data.user.id) {
-        console.log(
-          'User is an organizer. Fetching organizer data immediately after login...'
-        );
         try {
           const organizerData = await organizerService.getOrganizerByUserId(
             res.data.user.id
           );
           if (organizerData) {
-            // Store in session
             organizerService.storeOrganizerInSession(organizerData);
-            console.log(
-              'Successfully fetched and stored organizer data during login:',
-              organizerData
-            );
-          } else {
-            console.error('Failed to fetch organizer data during login');
           }
         } catch (organizerError) {
-          console.error(
-            'Error fetching organizer data during login:',
-            organizerError
-          );
-          // We don't rethrow this error as it shouldn't block the login process
+          console.error('Error fetching organizer data during login:', organizerError);
         }
       }
 
@@ -257,9 +292,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     role: string
   ): Promise<AuthResponse> => {
     try {
+      await primeCsrf();
       // Ensure role is lowercase (organizer, guest, team)
       const normalizedRole = role.toLowerCase();
-      
+
       // Send only the necessary data (email, password, role) to the backend
       const res = await axiosInstance.post('/api/signup/', {
         email,
@@ -268,7 +304,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       // Ensure proper structure in response
-      if (!res.data.user) {
+      if (!res.data?.user) {
         throw new Error('Invalid response format from server');
       }
 
@@ -285,7 +321,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Signup error:', error);
 
-      // Log detailed error response data for debugging
       if (axios.isAxiosError(error) && error.response) {
         console.error('Signup error details:', {
           status: error.response.status,
@@ -294,33 +329,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           headers: error.response.headers,
         });
       }
-
       throw error;
     }
   };
 
   const logout = () => {
-    // Prevent recursive logout calls
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
 
-    // Call the logout API to clear cookies on the backend
     axiosInstance
       .post(
         '/api/logout/',
         {},
         {
-          // Prevent this request from triggering the 401 interceptor
-          headers: {
-            'Skip-Auth-Intercept': 'true',
-          },
+          headers: { 'Skip-Auth-Intercept': 'true' },
         }
       )
       .catch(err => console.error('Error during logout:', err))
       .finally(() => {
         setIsLoggingOut(false);
-        // Clear all auth data
         clearAuthData();
       });
   };
@@ -330,41 +358,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('Checking if email exists:', email);
 
     try {
-      // First try the dedicated endpoint if it exists
+      // Try dedicated endpoint if present
       try {
-        const response = await axiosInstance.post('/api/check-email/', {
-          email,
-        });
-        console.log('Check email response:', response.data);
-
+        const response = await axiosInstance.post('/api/check-email/', { email });
         if (response.data?.exists !== undefined) {
           return response.data.exists === true;
         }
-      } catch (apiError) {
-        console.log('API endpoint not available, using fallback method');
-        // Continue to fallback if endpoint doesn't exist
+      } catch {
+        // ignore and fallback
       }
 
-      // FALLBACK: Try a preliminary login request
+      // Fallback: attempt login (validate_only)
       try {
-        // Use a dummy password that's almost certainly wrong
         await axiosInstance.post('/api/login/', {
           email,
           password: 'check_email_exists_dummy_password',
           validate_only: true,
         });
-
-        // If no error thrown, user likely exists (unusual case)
-        return true;
+        return true; // unusual but possible
       } catch (loginError: any) {
         if (axios.isAxiosError(loginError)) {
           const status = loginError.response?.status;
           const errorData = loginError.response?.data;
 
-          console.log('Login check status:', status);
-          console.log('Login check error data:', errorData);
-
-          // Most APIs return 404 for user not found, 401/403 for password wrong
           if (
             status === 404 ||
             (errorData &&
@@ -373,22 +389,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 (typeof errorData === 'string' &&
                   errorData.toLowerCase().includes('not found'))))
           ) {
-            return false; // Email doesn't exist
+            return false;
           }
-
-          // If we get auth errors, the user exists but password is wrong
           if (status === 401 || status === 403) {
-            return true; // Email exists
+            return true;
           }
         }
       }
 
-      // TEMPORARY: For testing only - assume email exists for now
-      console.log('Using temporary fallback - assuming email exists');
+      // Dev default: assume exists if uncertain
       return true;
     } catch (error) {
       console.error('Error checking email existence:', error);
-      console.log('Error occurred - defaulting to assume email exists');
       return true;
     }
   };
@@ -400,17 +412,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      // Make the API call to update the profile
-      // This is a mock implementation - replace with your actual API endpoint
-      // const response = await axiosInstance.put(`/api/users/${user.id}/profile`, profileData);
-
-      // For now, simulate a successful response by updating the local user data
+      // Replace with real API when ready
       const updatedUser = { ...user, ...profileData };
 
-      // Update local storage
+      // Update local storage + state
       localStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
-
-      // Update state
       setUser(updatedUser);
 
       return updatedUser;
@@ -423,20 +429,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // OAuth login methods
   const loginWithGoogle = async (): Promise<void> => {
     try {
-      console.log('Requesting Google OAuth URL from backend...');
-      // Request authorization URL from backend
       const response = await axiosInstance.get('/api/auth/google/');
-      console.log('Backend response:', response.data);
-      
-      // Backend returns camelCase (authUrl) due to DRF camelCase serializer
       const authUrl = response.data.authUrl || response.data.auth_url;
-      
-      if (!authUrl) {
-        throw new Error('No auth URL received from backend');
-      }
-      
-      console.log('Redirecting to Google OAuth URL:', authUrl);
-      // Redirect to Google OAuth consent screen
+      if (!authUrl) throw new Error('No auth URL received from backend');
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error initiating Google login:', error);
@@ -450,20 +445,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithInstagram = async (): Promise<void> => {
     try {
-      // Request authorization URL from backend
       const response = await axiosInstance.get('/api/auth/instagram/');
       const authUrl = response.data.authUrl || response.data.auth_url;
-
-      if (!authUrl) {
-        throw new Error('No auth URL received from backend');
-      }
-
-      // Redirect to Instagram OAuth consent screen
+      if (!authUrl) throw new Error('No auth URL received from backend');
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error initiating Instagram login:', error);
-      
-      // Check if it's a configuration error
       if (axios.isAxiosError(error) && error.response) {
         const errorData = error.response.data;
         if (errorData.error === 'not_configured' || error.response.status === 503) {
@@ -471,22 +458,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
       }
-      
       throw error;
     }
   };
 
   const loginWithApple = async (): Promise<void> => {
     try {
-      // Request authorization URL from backend
       const response = await axiosInstance.get('/api/auth/apple/');
       const authUrl = response.data.authUrl || response.data.auth_url;
-
-      if (!authUrl) {
-        throw new Error('No auth URL received from backend');
-      }
-
-      // Redirect to Apple OAuth consent screen
+      if (!authUrl) throw new Error('No auth URL received from backend');
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error initiating Apple login:', error);
@@ -503,24 +483,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     idToken?: string
   ): Promise<AuthResponse> => {
     try {
-      // Call appropriate backend endpoint based on provider
       const response = await axiosInstance.post(
         `/api/auth/${provider}/callback/`,
-        {
-          code,
-          state,
-          user: userData, // Only used by Apple
-          id_token: idToken, // For Apple Sign In
-        }
+        { code, state, user: userData, id_token: idToken }
       );
 
       const data = response.data;
 
-      // Update local state
       setUser(data.user);
       setUserRole(data.user.role);
 
-      // Store user data
       sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
       sessionStorage.setItem(USER_ROLE_KEY, data.user.role);
       localStorage.setItem(USER_ROLE_KEY, data.user.role);
@@ -531,6 +503,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
+
+  //Email verification helpers
+ const verifyEmailToken = async (token: string, email?: string) => {
+  await ensureCsrf();
+  const body = { token, email }; // backend expects both
+  const res = await axiosInstance.post('/api/verify-email/', body);
+  return {
+    email_verified: !!res.data?.email_verified || res.status === 200,
+    message: res.data?.message,
+  };
+};
+
+const resendVerificationEmail = async (email: string): Promise<void> => {
+  await ensureCsrf();
+  await axiosInstance.post('/api/resend-verification-email/', { email });
+};
+
+const getVerificationStatus = async () => {
+  const { data } = await axiosInstance.get('/api/verification-status/');
+  return {
+    email_verified: !!data?.email_verified,
+    state: data?.state || (data?.email_verified ? 'verified' : 'is_waiting'),
+    next_step: data?.next_step ?? null,
+    resend_available_in:
+      typeof data?.resend_available_in === 'number' ? data.resend_available_in : 0,
+  };
+};
 
   return (
     <AuthContext.Provider
@@ -548,6 +547,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         loginWithInstagram,
         loginWithApple,
         handleOAuthCallback,
+        verifyEmailToken,
+        resendVerificationEmail,
+        getVerificationStatus,
+        refreshUserProfile,
+        markEmailVerified,
       }}
     >
       {children}

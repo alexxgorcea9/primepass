@@ -51,12 +51,13 @@ const Signup: React.FC = () => {
     try {
       // Make the signup API request, passing email, password, and role
       const data = await signup(email, password, role);
-      console.log('Signup successful, navigating to profile setup');
+      console.log('Signup successful, navigating to email verification');
+      sessionStorage.setItem('pending_email', email);
 
       // Redirect to ProfileSetup after successful signup with role in state
-      navigate('/profile-setup', { 
+      navigate('/verify-email', {
         replace: true,
-        state: { role }
+        state: { role, email }
       });
     } catch (err) {
       console.error('Signup error details:', err);
