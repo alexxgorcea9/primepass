@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import AuthGuard from '@components/Auth/AuthGuard';
@@ -18,6 +18,7 @@ import EmailVerification from './pages/Auth/EmailVerification';
 // Organizer pages
 import OrganizerDashboard from './pages/Organizer/Dashboard';
 import CreateEvent from './pages/Organizer/CreateEvent';
+const LazyEventDetails = React.lazy(() => import('./pages/Organizer/EventDetails'));
 
 // Guest pages
 import Events from './pages/Guest/Events';
@@ -70,6 +71,13 @@ function App() {
       <Route path='/create-event' element={
         <AuthGuard allowedRoles={['organizer']}>
           <CreateEvent />
+        </AuthGuard>
+      } />
+      <Route path='/:username/event/:event_id' element={
+        <AuthGuard allowedRoles={['organizer']}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <LazyEventDetails />
+          </Suspense>
         </AuthGuard>
       } />
 

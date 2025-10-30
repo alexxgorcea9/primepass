@@ -136,43 +136,19 @@ const EventCard: React.FC<EventCardProps> = ({
               {/* Revenue Section */}
               <div className="flex flex-col overflow-hidden">
                 <div
-                  className="flex flex-col justify-center"
-                  style={{
-                    color: 'var(--color-grey)',
-                    fontSize: 'var(--text-xs)',
-                    fontFamily: 'var(--font-family-lufga)',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    wordWrap: 'break-word',
-                  }}
+                  className="flex flex-col justify-center text-sm text-grey"
                 >
                   Revenue
                 </div>
                 <div className="flex justify-between items-start overflow-hidden">
                   <div className="flex items-center overflow-hidden">
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--clor-white)',
-                        fontSize: 25,
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 700,
-                        lineHeight: '30px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-2xl text-white"
                     >
                       {formatCurrency(revenue)}
                     </div>
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--color-grey)',
-                        fontSize: 25,
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 700,
-                        lineHeight: '30px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-2xl text-grey"
                     >
                       ,{revenueDecimals.toString().padStart(2, '0')}
                     </div>
@@ -185,15 +161,7 @@ const EventCard: React.FC<EventCardProps> = ({
                   >
                     <Ticket className="w-3 h-3" style={{ color: 'var(--clor-white)' }} />
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--clor-white)',
-                        fontSize: 'var(--text-xs)',
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-md text-white"
                     >
                       {ticketsSold}
                     </div>
@@ -207,28 +175,12 @@ const EventCard: React.FC<EventCardProps> = ({
                 <div className="flex items-center gap-[5px] overflow-hidden">
                   <div className="inline-flex flex-col overflow-hidden">
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--color-grey)',
-                        fontSize: 8,
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-sm text-grey"
                     >
                       Attendance
                     </div>
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--clor-white)',
-                        fontSize: 'var(--text-xs)',
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-md text-white"
                     >
                       {attendance}%
                     </div>
@@ -239,28 +191,12 @@ const EventCard: React.FC<EventCardProps> = ({
                 <div className="inline-flex flex-col gap-[5px] overflow-hidden">
                   <div className="flex flex-col overflow-hidden">
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--color-grey)',
-                        fontSize: 8,
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-sm text-grey"
                     >
                       Avg Ticket
                     </div>
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--clor-white)',
-                        fontSize: 'var(--text-xs)',
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-md text-white"
                     >
                       {formatCurrency(avgTicket)}
                     </div>
@@ -271,28 +207,12 @@ const EventCard: React.FC<EventCardProps> = ({
                 <div className="flex items-center gap-[5px] overflow-hidden">
                   <div className="inline-flex flex-col overflow-hidden">
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--color-grey)',
-                        fontSize: 8,
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-sm text-grey"
                     >
                       Per Person
                     </div>
                     <div
-                      className="flex flex-col justify-center"
-                      style={{
-                        color: 'var(--clor-white)',
-                        fontSize: 'var(--text-xs)',
-                        fontFamily: 'var(--font-family-lufga)',
-                        fontWeight: 400,
-                        lineHeight: '16px',
-                        wordWrap: 'break-word',
-                      }}
+                      className="flex flex-col justify-center text-md text-white"
                     >
                       {formatCurrency(perPerson)}
                     </div>

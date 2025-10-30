@@ -1,5 +1,6 @@
 import { motion, Variants } from 'framer-motion';
 import { Copy, Share2, ArrowRight } from 'lucide-react';
+import Button from '@components/Auth/Button';
 
 interface LaunchSuccessScreenProps {
   eventName: string;
@@ -35,7 +36,7 @@ export default function LaunchSuccessScreen({
                                             }: LaunchSuccessScreenProps) {
   return (
     <div className="w-full h-full bg-[#0A0A0A] flex flex-col overflow-hidden">
-      <div className="flex-1 w-full p-2.5 flex flex-col justify-end items-center min-h-0">
+      <div className="flex-1 w-full p-2.5 flex flex-col justify-center items-center min-h-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -150,17 +151,7 @@ export default function LaunchSuccessScreen({
               </button>
 
               {/* Go to Dashboard Button */}
-              {onGoToDashboard && (
-                <button
-                  onClick={onGoToDashboard}
-                  className="self-stretch p-2.5 bg-[rgba(247,247,247,0.05)] rounded-[80px] flex justify-center items-center gap-2.5 hover:bg-[rgba(247,247,247,0.10)] transition-colors mt-2"
-                >
-                  <div className="flex justify-center flex-col text-white text-md font-['Lufga'] font-normal leading-[18px]">
-                    Go to Dashboard
-                  </div>
-                  <ArrowRight className="w-[14px] h-[14px] text-[#F7F7F7]" strokeWidth={1.5} />
-                </button>
-              )}
+              <Button text={'Go To Dashboard'} variant={'secondary'} onClick={onGoToDashboard}/>
             </motion.div>
         </motion.div>
       </div>
