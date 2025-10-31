@@ -5,12 +5,15 @@ import EventDetailsHeader from '@components/Organizer/EventDetails/EventDetailsH
 import EventDetailsNavBar from '@components/Organizer/EventDetails/EventDetailsNavBar';
 import TicketsTab from '@components/Organizer/EventDetails/Tickets/TicketsTab';
 import ConciergeTab from '@components/Organizer/EventDetails/Concierge/ConciergeTab';
+import TeamTab from '@components/Organizer/EventDetails/Team/TeamTab';
 import InfoTab from '@components/Organizer/EventDetails/Info/InfoTab';
 import CheckinTab from '@components/Organizer/EventDetails/Checkin/CheckinTab';
 
+type TabType = "Tickets" | "Concierge" | "Team" | "Info" | "Checkin";
+
 const EventDetails = () => {
-  const tabs = ["Tickets", "Concierge", "Info", "Checkin"];
-  const[activeTab, setActiveTab] = React.useState("Tickets");
+  const tabs: TabType[] = ["Tickets", "Concierge", "Team", "Info", "Checkin"];
+  const [activeTab, setActiveTab] = React.useState<TabType>("Tickets");
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -18,6 +21,8 @@ const EventDetails = () => {
         return <TicketsTab />;
       case "Concierge":
         return <ConciergeTab />;
+      case "Team":
+        return <TeamTab />;
       case "Info":
         return <InfoTab />;
       case "Checkin":
@@ -30,8 +35,8 @@ const EventDetails = () => {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Header at top */}
-      <EventDetailsHeader />
-      
+      <EventDetailsHeader activeTab={activeTab} />
+
       {/* Tab content fills remaining space */}
       <div className="flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
@@ -49,7 +54,7 @@ const EventDetails = () => {
       </div>
 
       {/* Navbar at bottom */}
-      <EventDetailsNavBar activeTab={tabs.indexOf(activeTab)} onTabChange={(index) => setActiveTab(tabs[index])} tabs={tabs} />
+      <EventDetailsNavBar activeTab={tabs.indexOf(activeTab)} onTabChange={(index) => setActiveTab(tabs[index])} />
     </div>
   );
 };
