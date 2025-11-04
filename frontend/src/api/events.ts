@@ -15,6 +15,7 @@ export interface Event {
   date: string;
   time: string;
   isFinished: boolean;
+  accessCode?: string;
   mediaCount: number;
 }
 

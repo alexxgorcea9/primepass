@@ -34,7 +34,7 @@ const EventDetails = () => {
       case "Concierge":
         return <ConciergeTab />;
       case "Team":
-        return <TeamTab />;
+        return <TeamTab event={event} />;
       case "Info":
         return <InfoTab event={event} />;
       case "Checkin":

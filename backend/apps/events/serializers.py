@@ -1,9 +1,21 @@
 import logging
+import string
+import secrets
 from rest_framework import serializers
 
 from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post
 
 logger = logging.getLogger(__name__)
+
+
+def generate_access_code():
+    """Generate a unique 8-character alphanumeric access code"""
+    characters = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(secrets.choice(characters) for _ in range(8))
+        # Check if code already exists
+        if not Event.objects.filter(access_code=code).exists():
+            return code
 
 
 class EventMediaSerializer(serializers.ModelSerializer):
@@ -57,6 +69,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     heroImageUrl = serializers.SerializerMethodField()
     shortDescription = serializers.CharField(source='short_description')
     isFinished = serializers.BooleanField(source='is_finished')
+    accessCode = serializers.CharField(source='access_code', read_only=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     organizer = serializers.SerializerMethodField()
@@ -81,6 +94,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
             'date',
             'time',
             'isFinished',
+            'accessCode',
             'media',
             'createdAt',
             'updatedAt',
@@ -122,6 +136,7 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create event with organizer from request context"""
         validated_data['organizer'] = self.context['request'].user
+        validated_data['access_code'] = generate_access_code()
         return super().create(validated_data)
 
 
@@ -503,13 +518,17 @@ class BulkEventCreateSerializer(serializers.Serializer):
         organizer = self.context['request'].user
 
         with transaction.atomic():
+            # Generate unique access code
+            access_code = generate_access_code()
+            
             # 1. Create the event
             event = Event.objects.create(
                 organizer=organizer,
+                access_code=access_code,
                 **validated_data
             )
             
-            logger.info(f"Event created - ID: {event.id}, hero_image: {event.hero_image}")
+            logger.info(f"Event created - ID: {event.id}, access_code: {access_code}, hero_image: {event.hero_image}")
 
 
             # 2. Create tiers and their nested data

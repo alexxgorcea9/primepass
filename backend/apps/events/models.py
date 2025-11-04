@@ -21,6 +21,11 @@ class Event(models.Model):
     date = models.DateField()
     time = models.TimeField()
     is_finished = models.BooleanField(default=False)
+    access_code = models.CharField(
+        max_length=8,
+        unique=True,
+        help_text="8-character alphanumeric access code for event team access"
+    )
     hero_image = models.ImageField(
         upload_to='event_heroes/',
         blank=True,
@@ -36,6 +41,7 @@ class Event(models.Model):
             models.Index(fields=['organizer'], name='event_organizer_idx'),
             models.Index(fields=['is_finished'], name='event_is_finished_idx'),
             models.Index(fields=['is_finished', '-date', '-time'], name='event_finished_date_time_idx'),
+            models.Index(fields=['access_code'], name='event_access_code_idx'),
         ]
         ordering = ['-date', '-time']
 
