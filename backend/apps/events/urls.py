@@ -13,6 +13,7 @@ from .views import (
     PrivilegeViewSet,
     AddOnViewSet,
     TableViewSet,
+    PostViewSet,
 )
 
 # Create main router and register top-level viewsets
@@ -20,10 +21,12 @@ router = DefaultRouter()
 router.register(r'events', EventViewSet, basename='event')
 router.register(r'media', EventMediaViewSet, basename='eventmedia')
 
-# Create nested router for tiers under events
+# Create nested router for tiers and posts under events
 # /api/events/{event_pk}/tiers/
+# /api/events/{event_pk}/posts/
 events_router = routers.NestedDefaultRouter(router, r'events', lookup='event')
 events_router.register(r'tiers', TierViewSet, basename='event-tiers')
+events_router.register(r'posts', PostViewSet, basename='event-posts')
 
 # Create nested routers for tier sub-resources
 # /api/events/{event_pk}/tiers/{tier_pk}/waves/
@@ -62,6 +65,14 @@ This creates the following endpoints:
 - GET    /api/media/{id}/                - Get media detail (auth required)
 - PATCH  /api/media/{id}/                - Update media metadata (auth required, organizer only)
 - DELETE /api/media/{id}/                - Delete media (auth required, organizer only)
+
+=== Post Endpoints ===
+- GET    /api/events/{event_id}/posts/           - List all posts for an event
+- POST   /api/events/{event_id}/posts/           - Create new post (organizer only)
+- GET    /api/events/{event_id}/posts/{post_id}/ - Get post detail
+- PUT    /api/events/{event_id}/posts/{post_id}/ - Update post (organizer only)
+- PATCH  /api/events/{event_id}/posts/{post_id}/ - Partial update post (organizer only)
+- DELETE /api/events/{event_id}/posts/{post_id}/ - Delete post (organizer only)
 
 === Tier Endpoints ===
 - GET    /api/events/{event_id}/tiers/              - List all tiers for an event
@@ -117,6 +128,13 @@ Events:
 - GET /api/events/?organizer_id=5
 - GET /api/events/upcoming/?page=1
 - POST /api/events/123/upload_media/
+
+Posts:
+- GET /api/events/1/posts/
+- POST /api/events/1/posts/ with body: {"title": "Event Update", "text": "We're excited to announce...", "image": <file>}
+- GET /api/events/1/posts/5/
+- PATCH /api/events/1/posts/5/ with body: {"title": "Updated Title"}
+- DELETE /api/events/1/posts/5/
 
 Tiers and Nested Resources:
 - GET /api/events/1/tiers/

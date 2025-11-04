@@ -195,13 +195,17 @@ class EventCacheService:
             event_id: Event ID
             organizer_id: Optional organizer ID for targeted invalidation
         """
-        from .keys import EventCacheKeys
+        from .keys import EventCacheKeys, PostCacheKeys
 
         # Delete event detail
         CacheService.delete(EventCacheKeys.event_detail(event_id))
 
         # Delete event media
         CacheService.delete(EventCacheKeys.event_media(event_id))
+
+        # Delete event posts
+        CacheService.delete(PostCacheKeys.event_posts(event_id))
+        CacheService.delete_pattern(PostCacheKeys.event_pattern(event_id))
 
         # Delete all event lists (since the event appears in lists)
         CacheService.delete_pattern(EventCacheKeys.event_list_pattern())
@@ -232,6 +236,40 @@ class EventCacheService:
         from .keys import EventCacheKeys
         CacheService.delete_pattern(EventCacheKeys.all_events_pattern())
         logger.warning("Invalidated ALL event caches")
+
+    @staticmethod
+    def invalidate_event_posts(event_id: int):
+        """
+        Invalidate post list cache for an event.
+
+        Args:
+            event_id: Event ID
+        """
+        from .keys import PostCacheKeys
+
+        cache_key = PostCacheKeys.event_posts(event_id)
+        CacheService.delete(cache_key)
+        logger.info(f"Invalidated event posts cache: {cache_key}")
+
+    @staticmethod
+    def invalidate_post(post_id: int, event_id: int):
+        """
+        Invalidate single post and related caches.
+
+        Args:
+            post_id: Post ID
+            event_id: Event ID
+        """
+        from .keys import PostCacheKeys
+
+        # Invalidate post detail
+        post_key = PostCacheKeys.post_detail(post_id)
+        CacheService.delete(post_key)
+
+        # Invalidate event posts list
+        EventCacheService.invalidate_event_posts(event_id)
+
+        logger.info(f"Invalidated post cache: {post_key}")
 
 
 class TierCacheService:

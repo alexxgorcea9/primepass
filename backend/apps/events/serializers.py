@@ -1,7 +1,7 @@
 import logging
 from rest_framework import serializers
 
-from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table
+from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +338,67 @@ class TierCreateUpdateSerializer(serializers.ModelSerializer):
         """Attach tier to event from context"""
         validated_data['event'] = self.context['event']
         return super().create(validated_data)
+
+
+# ==============================================================================
+# Post Serializers
+# ==============================================================================
+
+class PostSerializer(serializers.ModelSerializer):
+    """Serializer for reading posts"""
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    imageUrl = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = ['id', 'title', 'text', 'imageUrl', 'createdAt', 'updatedAt']
+        read_only_fields = ['id', 'createdAt', 'updatedAt']
+
+    def get_imageUrl(self, obj):
+        """Return relative URL for image (for frontend proxy)"""
+        if obj.image:
+            return obj.image.url
+        return None
+
+
+class PostCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating posts"""
+
+    class Meta:
+        model = Post
+        fields = ['title', 'text', 'image']
+
+    def validate_title(self, value):
+        """Ensure title is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Title cannot be empty")
+        return value.strip()
+
+    def validate_image(self, value):
+        """Validate image file if provided"""
+        if value:
+            # Validate file size (max 10MB)
+            max_size = 10 * 1024 * 1024  # 10MB
+            if value.size > max_size:
+                raise serializers.ValidationError(
+                    f"Image file too large. Maximum size is 10MB. Got {value.size / 1024 / 1024:.2f}MB"
+                )
+
+            # Validate image format
+            valid_formats = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+            if value.content_type not in valid_formats:
+                raise serializers.ValidationError(
+                    f"Invalid image format. Supported formats: JPEG, PNG, WebP. Got {value.content_type}"
+                )
+
+        return value
+
+    def create(self, validated_data):
+        """Attach post to event from context"""
+        validated_data['event'] = self.context['event']
+        return super().create(validated_data)
+
 
 
 class JSONStringField(serializers.Field):

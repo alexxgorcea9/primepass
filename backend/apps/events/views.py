@@ -9,8 +9,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
+from rest_framework.viewsets import ModelViewSet
 
-from apps.events.models import EventMedia, Tier, Wave, Privilege, AddOn, Table, Event
+from apps.events.models import EventMedia, Tier, Wave, Privilege, AddOn, Table, Event, Post
 from apps.events.serializers import (
     EventListSerializer,
     EventDetailSerializer,
@@ -28,7 +29,7 @@ from apps.events.serializers import (
     AddOnCreateUpdateSerializer,
     TableSerializer,
     TableCreateUpdateSerializer,
-    BulkEventCreateSerializer,
+    BulkEventCreateSerializer, PostCreateUpdateSerializer, PostSerializer,
 )
 from apps.events.cache.service import CacheService, EventCacheService, TierCacheService
 from apps.events.cache.keys import (
@@ -38,6 +39,7 @@ from apps.events.cache.keys import (
     PrivilegeCacheKeys,
     AddOnCacheKeys,
     TableCacheKeys,
+    PostCacheKeys,
 )
 from apps.events.permissions import IsEventOrganizer
 
@@ -304,9 +306,15 @@ class EventViewSet(viewsets.ModelViewSet):
             )
 
         page = request.query_params.get('page', 1)
+        is_finished = request.query_params.get('is_finished')
+        is_finished_bool = None
+        if is_finished is not None:
+            is_finished_bool = is_finished.lower() == 'true'
+        
         cache_key = EventCacheKeys.organizer_events(
             organizer_id=request.user.id,
-            page=int(page)
+            page=int(page),
+            is_finished=is_finished_bool
         )
 
         # Try cache
@@ -1101,3 +1109,134 @@ class TableViewSet(viewsets.ModelViewSet):
         TierCacheService.invalidate_table(pk, tier_pk)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ==============================================================================
+# Post ViewSet
+# ==============================================================================
+
+class PostViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Post CRUD operations with caching.
+    Posts belong to events.
+    """
+    permission_classes = [IsEventOrganizer]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action in ['create', 'update', 'partial_update']:
+            return PostCreateUpdateSerializer
+        return PostSerializer
+
+    def get_queryset(self):
+        """Get posts for a specific event"""
+        event_id = self.kwargs.get('event_pk')
+        if event_id:
+            return Post.objects.filter(event_id=event_id).select_related('event')
+        return Post.objects.none()
+
+    def list(self, request, event_pk=None):
+        """List all posts for an event with caching"""
+        cache_key = PostCacheKeys.event_posts(event_pk)
+
+        # Try cache
+        cached_data = CacheService.get(cache_key)
+        if cached_data is not None:
+            logger.info(f"Returning cached post list: {cache_key}")
+            return Response(cached_data)
+
+        # Fetch from database
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        response_data = serializer.data
+
+        # Cache the response
+        CacheService.set(cache_key, response_data, PostCacheKeys.EVENT_TTL)
+        logger.info(f"Cached post list: {cache_key}")
+
+        return Response(response_data)
+
+    def retrieve(self, request, pk=None, event_pk=None):
+        """Retrieve single post with caching"""
+        cache_key = PostCacheKeys.post_detail(pk)
+
+        # Try cache
+        cached_data = CacheService.get(cache_key)
+        if cached_data is not None:
+            logger.info(f"Returning cached post detail: {cache_key}")
+            return Response(cached_data)
+
+        # Fetch from database
+        post = get_object_or_404(self.get_queryset(), pk=pk)
+        self.check_object_permissions(request, post)
+        serializer = self.get_serializer(post)
+        response_data = serializer.data
+
+        # Cache the response
+        CacheService.set(cache_key, response_data, PostCacheKeys.DETAIL_TTL)
+        logger.info(f"Cached post detail: {cache_key}")
+
+        return Response(response_data)
+
+    def create(self, request, event_pk=None):
+        """Create new post for an event"""
+        # Verify event exists and user is organizer
+        event = get_object_or_404(Event, pk=event_pk)
+        if event.organizer != request.user:
+            return Response(
+                {'error': 'You do not have permission to create posts for this event.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.get_serializer(
+            data=request.data,
+            context={'event': event, 'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        post = serializer.save()
+
+        # Invalidate cache
+        EventCacheService.invalidate_event_posts(event_pk)
+
+        return Response(PostSerializer(post).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None, event_pk=None):
+        """Update post"""
+        post = get_object_or_404(self.get_queryset(), pk=pk)
+        self.check_object_permissions(request, post)
+
+        serializer = self.get_serializer(post, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        post = serializer.save()
+
+        # Invalidate cache
+        EventCacheService.invalidate_post(pk, event_pk)
+
+        return Response(PostSerializer(post).data)
+
+    def partial_update(self, request, pk=None, event_pk=None):
+        """Partially update post"""
+        post = get_object_or_404(self.get_queryset(), pk=pk)
+        self.check_object_permissions(request, post)
+
+        serializer = self.get_serializer(post, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        post = serializer.save()
+
+        # Invalidate cache
+        EventCacheService.invalidate_post(pk, event_pk)
+
+        return Response(PostSerializer(post).data)
+
+    def destroy(self, request, pk=None, event_pk=None):
+        """Delete post"""
+        post = get_object_or_404(self.get_queryset(), pk=pk)
+        self.check_object_permissions(request, post)
+
+        post.delete()
+
+        # Invalidate cache
+        EventCacheService.invalidate_post(pk, event_pk)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
