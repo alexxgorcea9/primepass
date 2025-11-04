@@ -47,12 +47,16 @@ class EventCacheKeys:
         return ":".join(key_parts)
 
     @classmethod
-    def organizer_events(cls, organizer_id: int, page: int = 1) -> str:
+    def organizer_events(cls, organizer_id: int, page: int = 1, is_finished: bool = None) -> str:
         """
         Cache key for events by a specific organizer.
         Example: events:organizer:42:page:1
+        Example: events:organizer:42:page:1:finished:true
         """
-        return f"{cls.ORGANIZER_PREFIX}:{organizer_id}:page:{page}"
+        key = f"{cls.ORGANIZER_PREFIX}:{organizer_id}:page:{page}"
+        if is_finished is not None:
+            key += f":finished:{str(is_finished).lower()}"
+        return key
 
     @classmethod
     def event_media(cls, event_id: int) -> str:
@@ -263,3 +267,29 @@ class TableCacheKeys:
     def tier_pattern(cls, tier_id: int) -> str:
         """Pattern to match all table cache keys for a specific tier."""
         return f"{cls.TIER_PREFIX}:{tier_id}:*"
+
+
+class PostCacheKeys:
+    """Generate cache keys for Table-related data"""
+    PREFIX = "posts"
+    DETAIL_PREFIX = f"{PREFIX}:detail"
+    EVENT_PREFIX = f"{PREFIX}:event"
+
+    # TTL
+    DETAIL_TTL = 60 * 60
+    EVENT_TTL = 60 * 30
+
+    @classmethod
+    def post_detail(cls, post_id: int) -> str:
+        """Cache key for a single post detail."""
+        return f"{cls.DETAIL_PREFIX}:{post_id}"
+
+    @classmethod
+    def event_posts(cls, event_id: int) -> str:
+        """Cache key for all posts of a specific event."""
+        return f"{cls.EVENT_PREFIX}:{event_id}"
+
+    @classmethod
+    def event_pattern(cls, event_id: int) -> str:
+        """Pattern to match all post cache keys for a specific event."""
+        return f"{cls.EVENT_PREFIX}:{event_id}:*"

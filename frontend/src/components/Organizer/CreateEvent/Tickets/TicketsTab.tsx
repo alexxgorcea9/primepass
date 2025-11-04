@@ -116,8 +116,8 @@ export default function TicketsTab({ tiers, setTiers, tierDataMap, setTierDataMa
   }, []);
 
   return (
-    <div className="w-full rounded-[20px] py-2.5 inline-flex flex-col justify-start items-start gap-2.5 overflow-hidden">
-      <div className="w-full flex-1 flex flex-col justify-start items-start gap-2.5 overflow-hidden">
+    <div className="w-full rounded-[20px] py-2.5 inline-flex flex-col justify-start items-start gap-2.5">
+      <div className="w-full flex-1 flex flex-col justify-start items-start gap-2.5">
         {selectedTierId ? (
           /* Tier Detail View */
           (() => {
@@ -194,9 +194,9 @@ export default function TicketsTab({ tiers, setTiers, tierDataMap, setTierDataMa
               ) : (
                 <motion.div
                   layout
-                  className="w-full flex flex-col"
+                  className="w-full flex flex-col gap-2.5"
                 >
-                  <AnimatePresence initial={false} mode="popLayout">
+                  <AnimatePresence initial={false}>
                     {tiers.map(tier => {
                       const gradient = TIER_GRADIENTS.find(
                         g => g.id === tier.gradientId

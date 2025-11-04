@@ -45,7 +45,7 @@ export default function TextInputLine({
 
   return (
     <div className="w-full p-2.5 overflow-hidden flex items-center gap-2.5">
-      <div className="w-[100px] flex flex-col justify-center text-[#F7F7F7] text-sm font-['Lufga'] font-normal leading-[18px]">
+      <div className="w-[100px] flex flex-col justify-center text-[#F7F7F7] text-md font-['Lufga'] font-normal leading-[18px]">
         {label}
       </div>
       <div className="flex-1 relative">
@@ -55,7 +55,7 @@ export default function TextInputLine({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           maxLength={maxLength}
-          className="w-full p-2.5 bg-[rgba(247,247,247,0.05)] overflow-hidden rounded-lg border border-[rgba(247,247,247,0.20)] text-white text-md font-['Lufga'] font-normal leading-[18px] placeholder:text-[rgba(247,247,247,0.3)] focus:outline-none focus:border-[rgba(247,247,247,0.4)] transition-colors"
+          className="w-full p-2.5 bg-[rgba(247,247,247,0.05)] overflow-hidden rounded-lg border border-[rgba(247,247,247,0.20)] text-white text-base font-['Lufga'] font-normal leading-[18px] placeholder:text-[rgba(247,247,247,0.3)] focus:outline-none focus:border-[rgba(247,247,247,0.4)] transition-colors"
         />
         {showCharCount && maxLength && (
           <motion.div

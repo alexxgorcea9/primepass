@@ -14,7 +14,7 @@ export default function TierDetailHeader({ tierName, onClose, onAdd }: TierDetai
   return (
     <div className="self-stretch overflow-hidden inline-flex justify-between items-center">
       {/* Left side - Tier info */}
-      <div className="overflow-hidden rounded-[40px] backdrop-blur-[20px] flex justify-center items-center">
+      <div className="overflow-hidden h-12 rounded-[40px] backdrop-blur-[20px] flex justify-center items-center">
         <div
           className={`w-12 h-12 p-2.5 bg-gradient-to-r from-[rgba(217,179,226,0.30)] to-[rgba(244,192,95,0.30)] overflow-hidden rounded-full inline-flex flex-col justify-center items-center gap-2.5`}
         >
@@ -30,7 +30,7 @@ export default function TierDetailHeader({ tierName, onClose, onAdd }: TierDetai
         </div>
       </div>
 
-      <div className=" rounded-[40px] backdrop-blur-[20px] inline-flex justify-center items-center gap-2.5 overflow-hidden">
+      <div className="rounded-[40px] backdrop-blur-[20px] inline-flex justify-center items-center gap-2.5 overflow-hidden">
         {/* Back Button */}
         <button
           onClick={onClose}

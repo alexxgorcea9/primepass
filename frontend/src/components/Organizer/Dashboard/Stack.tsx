@@ -241,6 +241,9 @@ const StackedEventCard = ({
     attendance: 0,
     avgTicket: 0,
     perPerson: 0,
+    eventId: event.id,
+    isStackOpen: isOpen,
+    onStackToggle: onExpand,
   };
 
   return (

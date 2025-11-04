@@ -25,7 +25,7 @@ export default function TierSpecialRequestsToggle({ specialRequests, onToggle }:
       <div className="self-stretch px-2.5 overflow-hidden inline-flex justify-between items-center">
         <div className="flex-1 overflow-hidden flex justify-start items-center gap-2.5">
           <div className="py-[5px] overflow-hidden inline-flex flex-col justify-center items-center gap-2.5">
-            <div className="self-stretch justify-center flex flex-col text-[#F7F7F7] text-sm font-normal font-['Lufga'] leading-[18px]">
+            <div className="self-stretch justify-center flex flex-col text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-[18px]">
               Special Requests
             </div>
           </div>

@@ -52,7 +52,7 @@ export default function NumberCounterField({
 
   return (
     <div className="w-full p-2.5 inline-flex justify-between items-center gap-2.5 overflow-hidden">
-      <div className="w-fit justify-center text-white text-sm font-normal font-['Lufga'] leading-none">
+      <div className="w-fit justify-center text-white text-md font-normal font-['Lufga'] leading-none">
         {label}
       </div>
       <div className="flex items-center gap-2">
@@ -68,7 +68,7 @@ export default function NumberCounterField({
         {/* Input Field with Prefix */}
         <div className="relative">
           {prefix && (
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#F7F7F7] text-sm font-['Lufga'] font-normal pointer-events-none">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#F7F7F7] text-md font-['Lufga'] font-normal pointer-events-none">
               {prefix}
             </span>
           )}
@@ -79,7 +79,7 @@ export default function NumberCounterField({
             placeholder="0"
             min={min}
             max={max}
-            className={`w-20 h-8 ${prefix ? 'pl-6 pr-2.5' : 'px-2.5'} bg-[rgba(247,247,247,0.05)] rounded-lg border border-[rgba(247,247,247,0.20)] text-[#F7F7F7] text-sm font-['Lufga'] font-normal text-center placeholder:text-[rgba(247,247,247,0.3)] focus:outline-none focus:border-[rgba(247,247,247,0.4)] transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+            className={`w-20 h-8 ${prefix ? 'pl-6 pr-2.5' : 'px-2.5'} bg-[rgba(247,247,247,0.05)] rounded-lg border border-[rgba(247,247,247,0.20)] text-[#F7F7F7] text-md font-['Lufga'] font-normal text-center placeholder:text-[rgba(247,247,247,0.3)] focus:outline-none focus:border-[rgba(247,247,247,0.4)] transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
           />
         </div>
 

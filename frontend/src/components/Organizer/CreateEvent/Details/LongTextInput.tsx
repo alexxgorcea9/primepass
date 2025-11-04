@@ -100,7 +100,7 @@ const LongTextInput: React.FC<BioTextAreaProps> = ({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            className='w-full resize-none bg-transparent font-[Lufga] text-md font-normal leading-[18px] text-white outline-none placeholder:text-[rgba(247,247,247,0.4)]'
+            className='w-full resize-none bg-transparent font-[Lufga] text-base font-normal leading-[18px] text-white outline-none placeholder:text-[rgba(247,247,247,0.4)]'
             rows={3}
             style={{ minHeight: '54px' }}
           />

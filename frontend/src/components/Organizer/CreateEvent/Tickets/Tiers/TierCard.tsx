@@ -31,27 +31,32 @@ const TierCard = forwardRef<HTMLDivElement, TierCardProps>(({
     <motion.div
       ref={ref}
       layout
-      initial={{ opacity: 0, filter: "blur(5px)" }}
-      animate={{ opacity: 1, filter: "blur(0px)" }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
       exit={{
         opacity: 0,
-        height: 0,
-        paddingTop: 0,
-        paddingBottom: 0,
-        marginBottom: 0,
-        transition: { duration: 0.3, ease: "easeInOut" },
+        scale: 0.7,
+        transition: { 
+          duration: 0.25,
+          ease: [0.4, 0, 0.2, 1]
+        },
       }}
-      style={{ overflow: "hidden", marginBottom: 10 }}
+      transition={{ 
+        duration: 0.15, 
+        ease: 'easeOut',
+        layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+      }}
+      style={{ willChange: 'transform, opacity' }}
       onClick={onClick}
       className="self-stretch h-16 p-2.5 bg-[rgba(247,247,247,0.05)] rounded-[20px] flex flex-col justify-between items-start cursor-pointer hover:bg-[rgba(247,247,247,0.08)] transition-colors"
     >
       <div className="self-stretch p-2.5 inline-flex justify-between items-center">
         {/* Left side */}
-        <div className="py-[3px] flex justify-center items-center gap-2.5">
+        <div className=" flex justify-center items-center gap-2.5">
           {/* Dynamic Icon */}
           <div className="w-6 h-6 bg-[rgba(247,247,247,0.20)] rounded-lg flex justify-center items-center">
             <img
-              src={icon || Ticket} // fallback to Ticket if no icon provided
+              src={icon || Ticket}
               alt={name}
               className="w-[12px] h-[12px]"
             />

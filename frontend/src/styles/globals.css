@@ -174,8 +174,8 @@
   --text-sm: 0.75rem;       /* 12px */
   --text-sm-lh: 1.125rem;   /* 18px */
   
-  --text-md: 0.875rem;      /* 14px */
-  --text-md-lh: 1.3125rem;  /* 21px */
+  --text-md: 1rem;      /* 14px */
+  --text-md-lh: 1.5rem;  /* 21px */
   
   --text-base: 1rem;        /* 16px */
   --text-base-lh: 1.5rem;   /* 24px */

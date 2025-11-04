@@ -5,6 +5,7 @@ import TierIconSelector from './TierIconSelector';
 import TierColorSelector from './TierColorSelector';
 import TierSpecialRequestsToggle from './TierSpecialRequestsToggle';
 import FormHeader from '@components/Organizer/CreateEvent/Tickets/FormHeader';
+import Ticket from '@/assets/ticket.svg';
 
 interface CreateTierFormProps {
   onClose: () => void;
@@ -20,7 +21,7 @@ export interface TierFormData {
 
 export default function NewTierForm({ onClose, onSave }: CreateTierFormProps) {
   const [tierName, setTierName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('ticket');
+  const [selectedIcon, setSelectedIcon] = useState(Ticket);
   const [selectedGradient, setSelectedGradient] = useState('emerald');
   const [specialRequests, setSpecialRequests] = useState(true);
 

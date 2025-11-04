@@ -18,10 +18,10 @@ export default function TierColorSelector({ selectedGradientId, onGradientChange
   };
 
   return (
-    <>
+    <motion.div layout className="self-stretch">
       {/* Color Selector */}
-      <motion.div layout className="self-stretch p-2.5 overflow-hidden inline-flex justify-start items-center gap-2.5">
-        <div className="w-[100px] justify-center flex flex-col text-[#F7F7F7] text-sm font-normal font-['Lufga'] leading-[18px]">
+      <motion.div layout className="self-stretch p-2.5 inline-flex justify-start items-center gap-2.5">
+        <div className="w-[100px] justify-center flex flex-col text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-[18px]">
           Color
         </div>
         <button
@@ -31,16 +31,24 @@ export default function TierColorSelector({ selectedGradientId, onGradientChange
       </motion.div>
 
       {/* Color Palette - Popup */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {showColorPicker && (
           <motion.div
+            layout
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="self-stretch overflow-hidden"
+            transition={{ 
+              duration: 0.3,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            style={{ overflow: 'hidden' }}
+            className="self-stretch"
           >
-            <div className="p-2.5 flex flex-col justify-center items-start gap-2.5 w-full">
+            <motion.div 
+              layout
+              className="p-2.5 flex flex-col justify-center items-start gap-2.5 w-full"
+            >
               <div className="self-stretch p-2.5 bg-[rgba(247,247,247,0.05)] overflow-hidden rounded-lg border border-[rgba(247,247,247,0.20)] inline-flex justify-between items-center">
                 {TIER_GRADIENTS.map((gradient) => (
                   <button
@@ -53,10 +61,10 @@ export default function TierColorSelector({ selectedGradientId, onGradientChange
                   />
                 ))}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </motion.div>
   );
 }

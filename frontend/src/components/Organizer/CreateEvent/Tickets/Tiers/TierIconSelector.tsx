@@ -34,13 +34,13 @@ export default function TierIconSelector({ selectedIcon, onIconChange }: TierIco
     iconOptions.find(i => i.icon === selectedIcon) || iconOptions[0];
 
   return (
-    <>
+    <motion.div layout className="self-stretch">
       {/* Icon Selector */}
       <motion.div
         layout
-        className="self-stretch p-2.5 overflow-hidden inline-flex justify-start items-center gap-2.5"
+        className="self-stretch p-2.5 inline-flex justify-start items-center gap-2.5"
       >
-        <div className="w-[100px] justify-center flex flex-col text-[#F7F7F7] text-sm font-normal font-['Lufga'] leading-[18px]">
+        <div className="w-[100px] justify-center flex flex-col text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-[18px]">
           Icon
         </div>
         <button
@@ -56,16 +56,24 @@ export default function TierIconSelector({ selectedIcon, onIconChange }: TierIco
       </motion.div>
 
       {/* Icon Options Row - Popup */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {showIconPicker && (
           <motion.div
+            layout
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="self-stretch overflow-hidden"
+            transition={{ 
+              duration: 0.3,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            style={{ overflow: 'hidden' }}
+            className="self-stretch"
           >
-            <div className="inline-flex justify-start items-center gap-2.5 w-full">
+            <motion.div 
+              layout
+              className="inline-flex justify-start items-center gap-2.5 w-full"
+            >
               <div className="flex-1 p-2.5 bg-[rgba(247,247,247,0.05)] rounded-lg border border-[rgba(247,247,247,0.20)] inline-flex justify-between items-center">
                 {iconOptions.map(({ name, icon }) => (
                   <button
@@ -77,10 +85,10 @@ export default function TierIconSelector({ selectedIcon, onIconChange }: TierIco
                   </button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </motion.div>
   );
 }

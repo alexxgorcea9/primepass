@@ -41,7 +41,7 @@ export default function QuantitySelector({
   return (
     <div className="w-full flex flex-col gap-0">
       <div className="w-full  p-2.5 inline-flex justify-between items-center gap-2.5 overflow-hidden">
-        <div className="w-fit justify-center text-white text-sm font-normal font-['Lufga'] leading-none">
+        <div className="w-fit justify-center text-white text-md font-normal font-['Lufga'] leading-none">
           Amount
         </div>
 
@@ -150,8 +150,8 @@ function StyleSheet() {
             padding: 10px 14px;
             border-radius: 8px;
             mix-blend-mode: difference;
-            font-size: 0.75rem;
-            line-height: 1.125rem;
+            font-size: 1rem;
+            line-height: 1.5rem;
             font-weight: 400;
         }
 

@@ -38,13 +38,12 @@ function TableCard({ name, seats, minimumSpend, count, isActive = false, onDelet
       {/* Header with name and status */}
       <div className="self-stretch inline-flex justify-between items-center overflow-hidden">
         <div className="p-2.5 rounded-[80px] flex justify-start items-center gap-2.5 overflow-hidden">
-          <div className="w-6 h-6 relative">
-            <div className="w-2 h-[4.84px] absolute left-[8.38px] top-[9.58px] border-[1.5px] border-[#F4C05F]" />
-          </div>
+
           <div className="justify-center text-[#F4C05F] text-base font-normal font-['Lufga'] leading-normal">
             {name}
           </div>
         </div>
+
         <button
           onClick={handleDelete}
           className="w-6 h-6 overflow-hidden rounded-full flex justify-center items-center gap-2.5 hover:bg-[rgba(247,247,247,0.1)] transition-colors"
@@ -54,14 +53,14 @@ function TableCard({ name, seats, minimumSpend, count, isActive = false, onDelet
       </div>
 
       {/* Details Section */}
-      <div className="self-stretch px-2.5 rounded-[20px] inline-flex justify-start items-start gap-2.5 overflow-hidden">
+      <div className="self-stretch px-2.5 inline-flex justify-start items-start flex-wrap gap-2.5 overflow-hidden">
         {/* Seats */}
-        <div className="rounded-[80px] flex justify-start items-center overflow-hidden">
+        <div className=" flex justify-start items-center overflow-hidden">
           <div className="w-9 h-9 p-2.5 bg-[rgba(247,247,247,0.20)] rounded-[80px] flex justify-center items-center gap-2.5 overflow-hidden">
             <img src={Ticket} alt="Ticket" className="w-4 h-4" />
           </div>
-          <div className="p-2.5 rounded-[80px] inline-flex flex-col justify-center items-start overflow-hidden">
-            <div className="justify-center text-[#B4B8B3] text-md font-normal font-['Lufga'] leading-none">
+          <div className="p-2.5 inline-flex flex-col justify-between items-start overflow-hidden">
+            <div className="justify-center text-[#B4B8B3] text-sm font-normal font-['Lufga'] leading-none">
               Seats
             </div>
             <div className="justify-center text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-none">
@@ -76,8 +75,8 @@ function TableCard({ name, seats, minimumSpend, count, isActive = false, onDelet
             <img src={Card} alt="Card" className="w-4 h-4" />
           </div>
           <div className="p-2.5 flex-col justify-center items-start overflow-hidden">
-            <div className="justify-center text-[#B4B8B3] text-md font-normal font-['Lufga'] leading-none whitespace-nowrap">
-              Minimum spend
+            <div className="justify-center text-[#B4B8B3] text-sm font-normal font-['Lufga'] leading-none whitespace-nowrap">
+              Min spend
             </div>
             <div className="justify-center text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-none">
               ${minimumSpend.toLocaleString()}
@@ -86,12 +85,12 @@ function TableCard({ name, seats, minimumSpend, count, isActive = false, onDelet
         </div>
 
         {/* Count */}
-        <div className="rounded-[80px] flex justify-start items-center overflow-hidden">
+        <div className=" flex justify-start items-center overflow-hidden">
           <div className="w-9 h-9 p-2.5 bg-[rgba(247,247,247,0.20)] rounded-[80px] flex justify-center items-center gap-2.5 overflow-hidden">
             <img src={Ticket} alt="Ticket" className="w-4 h-4" />
           </div>
-          <div className="p-2.5 rounded-[80px] inline-flex flex-col justify-center items-start overflow-hidden">
-            <div className="justify-center text-[#B4B8B3] text-md font-normal font-['Lufga'] leading-none">
+          <div className="p-2.5 inline-flex flex-col justify-center items-start overflow-hidden">
+            <div className="justify-center text-[#B4B8B3] text-sm font-normal font-['Lufga'] leading-none">
               Count
             </div>
             <div className="justify-center text-[#F7F7F7] text-md font-normal font-['Lufga'] leading-none">
