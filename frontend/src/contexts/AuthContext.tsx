@@ -145,8 +145,11 @@ const markEmailVerified = () => {
             return axiosInstance(originalRequest);
           }
         } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          // If refresh fails, clear auth data and logout
+          // Only log refresh errors if we have a user (expected to be authenticated)
+          if (user) {
+            console.log('Session expired, please log in again');
+          }
+          // If refresh fails, clear auth data silently
           clearAuthData();
           return Promise.reject(refreshError);
         }
@@ -203,37 +206,43 @@ const markEmailVerified = () => {
     try {
       await primeCsrf();
 
-      // Try to confirm session via verification endpoint (works even when unverified)
-      let sessionOk = false;
-      try {
-        await getVerificationStatus();
-        sessionOk = true;
-      } catch {
-        sessionOk = false;
-      }
+      // Check if we have cached user data first
+      const cachedUserRaw =
+        sessionStorage.getItem(USER_DATA_KEY) || localStorage.getItem(USER_DATA_KEY);
+      const cachedUser = cachedUserRaw ? JSON.parse(cachedUserRaw) : null;
 
-      if (sessionOk) {
-        // If we have a cached user (from signup/login), keep it;
-        // If verified now, refresh full profile; if not verified, skip gracefully.
-        const cachedUserRaw =
-          sessionStorage.getItem(USER_DATA_KEY) || localStorage.getItem(USER_DATA_KEY);
-        const cachedUser = cachedUserRaw ? JSON.parse(cachedUserRaw) : null;
+      // Only attempt session verification if we have cached user data
+      if (cachedUser) {
+        setUser(cachedUser);
+        setUserRole(cachedUser.role);
 
-        if (cachedUser) {
-          setUser(cachedUser);
-          setUserRole(cachedUser.role);
+        // Verify the session is still valid
+        let sessionOk = false;
+        try {
+          await getVerificationStatus();
+          sessionOk = true;
+        } catch (error: any) {
+          // Session expired or invalid - clear auth data
+          console.log('Session validation failed, clearing auth data');
+          sessionOk = false;
         }
 
-        // Attempt full refresh (will succeed only if verified)
-        try {
-          await refreshUserProfile();
-        } catch {
-          // ignored — likely unverified; user stays in waiting state
+        if (sessionOk) {
+          // Attempt full refresh (will succeed only if verified)
+          try {
+            await refreshUserProfile();
+          } catch {
+            // ignored — likely unverified; user stays in waiting state
+          }
+        } else {
+          clearAuthData();
         }
       } else {
+        // No cached user, clear any stale data
         clearAuthData();
       }
-    } catch {
+    } catch (error) {
+      console.error('Auth check failed:', error);
       clearAuthData();
     } finally {
       setIsLoading(false);

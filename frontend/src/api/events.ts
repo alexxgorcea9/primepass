@@ -1,30 +1,6 @@
+import apiClient, { API_BASE_URL } from './axios';
 import axios from 'axios';
 
-// Use relative URL to leverage Vite's proxy configuration
-const API_BASE_URL = '/api';
-
-// Axios instance with credentials for cookie-based auth
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true, // Important: sends cookies with requests
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add CSRF token to requests if available
-apiClient.interceptors.request.use((config) => {
-  const csrfToken = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('csrftoken='))
-    ?.split('=')[1];
-
-  if (csrfToken) {
-    config.headers['X-CSRFToken'] = csrfToken;
-  }
-
-  return config;
-});
 
 // Types based on your Django serializer
 export interface Event {
@@ -102,6 +78,17 @@ export const eventsApi = {
       return response.data;
     } catch (error) {
       console.error('Error fetching my events:', error);
+      throw error;
+    }
+  },
+
+  // Get single event detail
+  getEventDetail: async (eventId: number): Promise<Event> => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching event detail:', error);
       throw error;
     }
   },

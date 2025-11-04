@@ -26,12 +26,12 @@ const Dashboard: React.FC = () => {
 
   // Filter events based on is_finished status
   const activeEvents = React.useMemo(
-    () => (upcomingData?.results || []).filter((event) => event.isFinished === false),
+    () => (upcomingData?.results || []).filter((event) => !event.isFinished),
     [upcomingData]
   );
 
   const pastEvents = React.useMemo(
-    () => (finishedData?.results || []).filter((event) => event.isFinished === true),
+    () => (finishedData?.results || []).filter((event) => event.isFinished),
     [finishedData]
   );
 

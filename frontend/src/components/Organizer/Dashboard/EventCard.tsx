@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Ticket } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface EventCardProps {
   eventName: string;
@@ -11,6 +12,9 @@ interface EventCardProps {
   attendance: number;
   avgTicket: number;
   perPerson: number;
+  eventId: number;
+  isStackOpen?: boolean;
+  onStackToggle?: () => void;
 }
 
 const EventCard: React.FC<EventCardProps> = ({
@@ -23,8 +27,13 @@ const EventCard: React.FC<EventCardProps> = ({
   attendance,
   avgTicket,
   perPerson,
+  eventId,
+  isStackOpen = true,
+  onStackToggle,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const navigate = useNavigate();
+  const { username } = useParams<{ username: string }>();
   const hasValidImage = imageUrl && !imageError;
   const fallbackGradient = 'linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(244, 192, 95, 0.30) 100%)';
   const fallbackBG = 'rgba(29, 29, 29, 1)';
@@ -38,12 +47,21 @@ const EventCard: React.FC<EventCardProps> = ({
     }).format(amount);
   };
 
+  const handleClick = () => {
+    if (!isStackOpen && onStackToggle) {
+      onStackToggle();
+    } else if (username) {
+      navigate(`/${username}/event/${eventId}`);
+    }
+  };
+
   return (
     <div
-      className="w-full h-fit relative overflow-hidden rounded-[20px]"
+      className="w-full h-fit relative overflow-hidden rounded-[20px] cursor-pointer"
       style={{
         background: hasValidImage ? `url(${imageUrl}) center/cover` : fallbackBG,
       }}
+      onClick={handleClick}
     >
       {/* Background overlay */}
       {hasValidImage ? (

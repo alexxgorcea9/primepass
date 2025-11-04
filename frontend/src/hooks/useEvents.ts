@@ -7,6 +7,7 @@ export const eventKeys = {
   upcoming: () => [...eventKeys.all, 'upcoming'] as const,
   finished: () => [...eventKeys.all, 'finished'] as const,
   myEvents: () => [...eventKeys.all, 'my-events'] as const,
+  detail: (eventId: number) => [...eventKeys.all, 'detail', eventId] as const,
 };
 
 // Hook for upcoming events
@@ -48,5 +49,15 @@ export const useMyFinishedEvents = (page = 1, pageSize = 100) => {
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
     refetchOnMount: true, // Always refetch when component mounts
+  });
+};
+
+// Hook for fetching event details
+export const useEventDetail = (eventId: number) => {
+  return useQuery<Event>({
+    queryKey: eventKeys.detail(eventId),
+    queryFn: () => eventsApi.getEventDetail(eventId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 };
