@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.auth",
     "apps.events",
+    "apps.concierge",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

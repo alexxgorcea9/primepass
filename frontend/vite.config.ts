@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
+import fs from 'fs';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -25,6 +26,12 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,  // Frontend development port
     
+    // Enable HTTPS for camera/microphone access
+    https: fs.existsSync(path.resolve(__dirname, 'certs/cert.pem')) ? {
+      key: fs.readFileSync(path.resolve(__dirname, 'certs/key.pem')),
+      cert: fs.readFileSync(path.resolve(__dirname, 'certs/cert.pem')),
+    } : undefined,
+    
     // Enable file watching with polling for Docker on Windows
     watch: {
       usePolling: true,
@@ -37,7 +44,7 @@ export default defineConfig({
       // Always use the network IP so HMR works from any device on the network
       host: '192.168.100.133',
       clientPort: 3000,
-      protocol: 'ws',
+      protocol: 'wss',  // Changed to wss for secure WebSocket
       timeout: 30000,
     },
 
