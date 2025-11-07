@@ -30,6 +30,7 @@ from apps.events.serializers import (
     TableSerializer,
     TableCreateUpdateSerializer,
     BulkEventCreateSerializer, PostCreateUpdateSerializer, PostSerializer,
+    JoinTeamSerializer, TeamMemberSerializer,
 )
 from apps.events.cache.service import CacheService, EventCacheService, TierCacheService
 from apps.events.cache.keys import (
@@ -86,7 +87,7 @@ class EventViewSet(viewsets.ModelViewSet):
         Get queryset with optimizations.
         Prefetch related data to avoid N+1 queries.
         """
-        queryset = Event.objects.select_related('organizer').prefetch_related('media')
+        queryset = Event.objects.select_related('organizer').prefetch_related('media', 'team_members')
 
         # Filter by is_finished if specified
         is_finished = self.request.query_params.get('is_finished')
@@ -419,6 +420,95 @@ class EventViewSet(viewsets.ModelViewSet):
                 {'error': 'Failed to create event', 'message': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def join_team(self, request):
+        """
+        Join an event team using an access code.
+        Requires authentication.
+        """
+        serializer = JoinTeamSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if not serializer.is_valid():
+            return Response(
+                {'error': 'Invalid data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            event = serializer.save()
+            
+            # Invalidate event detail cache
+            EventCacheService.invalidate_event(event.id)
+            
+            # Return event detail with team members
+            detail_serializer = EventDetailSerializer(event, context={'request': request})
+            return Response(
+                {
+                    'message': 'Successfully joined the team',
+                    'event': detail_serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error joining team: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to join team', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def leave_team(self, request, pk=None):
+        """
+        Leave an event team.
+        Requires authentication.
+        """
+        event = self.get_object()
+        user = request.user
+        
+        # Check if user is a team member
+        if not event.team_members.filter(id=user.id).exists():
+            return Response(
+                {'error': 'You are not a member of this team'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Remove user from team
+        event.team_members.remove(user)
+        
+        # Invalidate event detail cache
+        EventCacheService.invalidate_event(event.id)
+        
+        return Response(
+            {'message': 'Successfully left the team'},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def team_members(self, request, pk=None):
+        """
+        Get list of team members for an event.
+        Only accessible to organizer and team members.
+        """
+        event = self.get_object()
+        
+        # Check if user is organizer or team member
+        if event.organizer != request.user and not event.team_members.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'You do not have permission to view this team'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = TeamMemberSerializer(event.team_members.all(), many=True)
+        return Response(serializer.data)
 
 
 class EventMediaViewSet(viewsets.ModelViewSet):
