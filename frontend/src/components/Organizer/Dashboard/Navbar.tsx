@@ -76,9 +76,12 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
             className="w-12 h-12 rounded-full object-cover"
           />
         ) : (
-          <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center">
+          <button className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center"
+          onClick={() => navigate('/${username}/settings')}
+          >
+
             <img src={ProfileIcon} alt="Profile" className="w-4 h-4" />
-          </div>
+          </button>
         )}
       </div>
     </nav>

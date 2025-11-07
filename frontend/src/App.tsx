@@ -20,6 +20,7 @@ const CreateEvent = React.lazy(() => import('./pages/Organizer/CreateEvent'));
 const EventDetails = React.lazy(() => import('./pages/Organizer/EventDetails'));
 const QRScanPage = React.lazy(() => import('./pages/Organizer/QRScanPage'));
 const RequestDetails = React.lazy(() => import('./pages/Organizer/RequestDetails'));
+const Settings = React.lazy(() => import('./pages/Organizer/Settings'));
 
 // Guest pages
 const Events = React.lazy(() => import('./pages/Guest/Events'));
@@ -104,6 +105,13 @@ function App() {
           <AuthGuard allowedRoles={['organizer']}>
             <Suspense fallback={<PageLoader />}>
               <RequestDetails />
+            </Suspense>
+          </AuthGuard>
+        } />
+        <Route path='/:username/settings' element={
+          <AuthGuard allowedRoles={['organizer']}>
+            <Suspense fallback={<PageLoader />}>
+              <Settings />
             </Suspense>
           </AuthGuard>
         } />
