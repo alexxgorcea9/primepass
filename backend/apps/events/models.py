@@ -26,6 +26,12 @@ class Event(models.Model):
         unique=True,
         help_text="8-character alphanumeric access code for event team access"
     )
+    team_members = models.ManyToManyField(
+        User,
+        related_name='team_events',
+        blank=True,
+        help_text="Users who are part of the event team"
+    )
     hero_image = models.ImageField(
         upload_to='event_heroes/',
         blank=True,

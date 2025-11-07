@@ -51,6 +51,9 @@ urlpatterns = [
 
     # Events API
     path('api/', include('apps.events.urls')),
+    
+    # Concierge API (Special Requests)
+    path('api/concierge/', include('apps.concierge.urls')),
 ]
 
 # Development URLs

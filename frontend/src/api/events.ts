@@ -3,6 +3,14 @@ import axios from 'axios';
 
 
 // Types based on your Django serializer
+export interface TeamMember {
+  id: number;
+  email: string;
+  name: string;
+  profilePicture: string | null;
+  role: string;
+}
+
 export interface Event {
   id: number;
   organizer: {
@@ -16,6 +24,7 @@ export interface Event {
   time: string;
   isFinished: boolean;
   accessCode?: string;
+  teamMembers?: TeamMember[];
   mediaCount: number;
 }
 
@@ -90,6 +99,41 @@ export const eventsApi = {
       return response.data;
     } catch (error) {
       console.error('Error fetching event detail:', error);
+      throw error;
+    }
+  },
+
+  // Join event team with access code
+  joinTeam: async (accessCode: string): Promise<{ message: string; event: Event }> => {
+    try {
+      const response = await apiClient.post('/events/join_team/', {
+        accessCode,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error joining team:', error);
+      throw error;
+    }
+  },
+
+  // Leave event team
+  leaveTeam: async (eventId: number): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.post(`/events/${eventId}/leave_team/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error leaving team:', error);
+      throw error;
+    }
+  },
+
+  // Get team members for an event
+  getTeamMembers: async (eventId: number): Promise<TeamMember[]> => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}/team_members/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching team members:', error);
       throw error;
     }
   },

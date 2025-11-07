@@ -35,7 +35,7 @@ const EventDetailsHeader = ({
       <div className="text-2xl font-bold text-white">{getHeaderText()}</div>
       <button
         className="bg-BG-1 rounded-full w-12 h-12 flex justify-center items-center"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/${username}/dashboard')}
       >
         <img src={XClose} alt="XClose" className="w-4 h-4" />
       </button>

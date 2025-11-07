@@ -32,7 +32,7 @@ const EventDetails = () => {
       case "Tickets":
         return <TicketsTab />;
       case "Concierge":
-        return <ConciergeTab />;
+        return <ConciergeTab event={event} />;
       case "Team":
         return <TeamTab event={event} />;
       case "Info":

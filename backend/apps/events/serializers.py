@@ -2,9 +2,11 @@ import logging
 import string
 import secrets
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 
 from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +18,22 @@ def generate_access_code():
         # Check if code already exists
         if not Event.objects.filter(access_code=code).exists():
             return code
+
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """Serializer for team members"""
+    profilePicture = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name', 'profilePicture', 'role']
+        read_only_fields = ['id', 'email', 'name', 'profilePicture', 'role']
+    
+    def get_profilePicture(self, obj):
+        """Return profile picture URL if exists"""
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return None
 
 
 class EventMediaSerializer(serializers.ModelSerializer):
@@ -74,6 +92,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     organizer = serializers.SerializerMethodField()
     media = EventMediaSerializer(many=True, read_only=True)
+    teamMembers = TeamMemberSerializer(source='team_members', many=True, read_only=True)
     
     def get_heroImageUrl(self, obj):
         """Return relative URL for hero image (for frontend proxy)"""
@@ -95,6 +114,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
             'time',
             'isFinished',
             'accessCode',
+            'teamMembers',
             'media',
             'createdAt',
             'updatedAt',
@@ -606,3 +626,48 @@ class BulkEventCreateSerializer(serializers.Serializer):
                     )
 
             return event
+
+
+# ==============================================================================
+# Team Management Serializers
+# ==============================================================================
+
+class JoinTeamSerializer(serializers.Serializer):
+    """Serializer for joining an event team with access code"""
+    accessCode = serializers.CharField(
+        source='access_code',
+        max_length=8,
+        help_text="8-character access code for the event"
+    )
+
+    def validate_accessCode(self, value):
+        """Validate that the access code exists"""
+        try:
+            event = Event.objects.get(access_code=value)
+            self.context['event'] = event
+            return value
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Invalid access code")
+
+    def save(self):
+        """Add the user to the event's team"""
+        user = self.context['request'].user
+        event = self.context['event']
+        
+        # Check if user is already a team member
+        if event.team_members.filter(id=user.id).exists():
+            raise serializers.ValidationError("You are already a member of this team")
+        
+        # Check if user is the organizer
+        if event.organizer == user:
+            raise serializers.ValidationError("You are the organizer of this event")
+        
+        # Add user to team members
+        event.team_members.add(user)
+        
+        # Update user role to team if not already
+        if user.role != 'team':
+            user.role = 'team'
+            user.save(update_fields=['role'])
+        
+        return event
