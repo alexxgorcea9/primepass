@@ -65,24 +65,32 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
     }
   };
 
+  const FALLBACK_PROFILE = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop';
+
   return (
     <nav className="relative w-full h-auto min-h-[68px] p-2.5">
       <div className="relative flex items-center justify-end gap-1.5 w-full min-h-[48px]">
         {renderIcons()}
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt="User avatar"
-            className="w-12 h-12 rounded-full object-cover"
-          />
-        ) : (
-          <button className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center"
-          onClick={() => navigate('/${username}/settings')}
-          >
-
-            <img src={ProfileIcon} alt="Profile" className="w-4 h-4" />
-          </button>
-        )}
+        <button 
+          className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity"
+          onClick={() => navigate('/organizer/settings')}
+          aria-label="Go to Settings"
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="User avatar"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = FALLBACK_PROFILE;
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-white/5 flex items-center justify-center">
+              <img src={ProfileIcon} alt="Profile" className="w-4 h-4" />
+            </div>
+          )}
+        </button>
       </div>
     </nav>
   );
