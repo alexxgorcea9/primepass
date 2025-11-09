@@ -50,6 +50,18 @@ class User(AbstractUser):
         help_text="User's profile picture stored on S3."
     )
 
+    banner_media = models.FileField(
+        upload_to='banners/',
+        blank=True,
+        null=True,
+        help_text=(
+            "User's banner image or video (supports both). "
+            "Storage: Local filesystem in development (MEDIA_ROOT/banners/), "
+            "S3 in production when USE_S3=True (uses backend.storages.MediaStorage). "
+            "Supports .jpg, .png, .gif, .mp4, .webm, .mov formats."
+        )
+    )
+
     name = models.CharField(max_length=100, blank=True, default='')
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     birth_date = models.DateField(blank=True, null=True, help_text="User's date of birth")

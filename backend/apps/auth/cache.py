@@ -41,6 +41,7 @@ def get_cached_user(user_id):
                 'permissions': permissions,
                 'role': user.role,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None,
+                'banner_media': user.banner_media.url if user.banner_media else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
                 'organizer_bio': getattr(user, 'organizer_bio', None)
             }

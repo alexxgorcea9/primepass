@@ -103,9 +103,14 @@ export default function Stack({
   return (
     <motion.div
       layout
-      style={stackContainerStyle}
+      style={{
+        ...stackContainerStyle,
+        height: isOpen 
+          ? EVENT_CARD_HEIGHT * totalCards + STACK_GAP * (totalCards - 1) + 50 + 128
+          : EVENT_CARD_HEIGHT + 2 * Math.abs(CARD_PEEK_OFFSET) + 50
+      }}
       variants={stackVariants}
-      initial={false}
+      initial="closed"
       animate={isOpen ? 'open' : 'closed'}
       className={isOpen ? "pb-32" : "pb-10"}
       transition={{
@@ -170,7 +175,7 @@ const StackHeader = ({
     <motion.div
       style={headerContainerStyle}
       variants={variants}
-      initial={false}
+      initial="closed"
       animate={isExpanded ? 'open' : 'closed'}
       transition={{
         type: 'spring',
@@ -253,7 +258,7 @@ const StackedEventCard = ({
         pointerEvents: isOpen ? 'auto' : (index === 0 ? 'auto' : 'none'),
       }}
       variants={variants}
-      initial={false}
+      initial="closed"
       animate={isOpen ? 'open' : 'closed'}
       transition={{
         type: 'spring',

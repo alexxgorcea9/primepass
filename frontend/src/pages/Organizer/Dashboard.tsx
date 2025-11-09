@@ -6,8 +6,10 @@ import Navbar from '@components/Organizer/Dashboard/Navbar';
 import Stack from '@components/Organizer/Dashboard/Stack';
 import GradualBlur from '@/components/GradualBlur';
 import { useMyUpcomingEvents, useMyFinishedEvents } from '@/hooks/useEvents';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
   const [openStack, setOpenStack] = React.useState<'active' | 'past' | null>(null);
 
@@ -39,7 +41,7 @@ const Dashboard: React.FC = () => {
     <section className="fixed inset-0 h-screen overflow-hidden">
       {/* Fixed Navbar at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
-        <Navbar type="organizer" />
+        <Navbar type="organizer" avatarUrl={user?.profile_picture} />
       </div>
 
       {/* Fixed Tabs below navbar, centered */}

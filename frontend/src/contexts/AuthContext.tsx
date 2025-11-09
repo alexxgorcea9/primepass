@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import axios from 'axios';
+import apiClient from '../api/axios'; // Import configured axios with interceptors
 import organizerService from '../services/organizerService';
 
 type VerificationStatus = {
@@ -26,7 +27,11 @@ export interface User {
   email: string;
   role: 'organizer' | 'team' | 'guest';
   name: string;
-  profile_picture: string;
+  profile_picture?: string;
+  banner_media?: string;
+  phone_number?: string;
+  birth_date?: string;
+  organizer_bio?: string;
   email_verified?: boolean;
 }
 
@@ -96,6 +101,26 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Add request interceptor to handle FormData properly
+axiosInstance.interceptors.request.use((config) => {
+  console.log('[AuthContext Interceptor] Request config:', {
+    url: config.url,
+    method: config.method,
+    dataType: config.data?.constructor?.name,
+    isFormData: config.data instanceof FormData,
+    contentType: config.headers['Content-Type']
+  });
+
+  // Remove Content-Type for FormData to let browser set it with boundary
+  if (config.data instanceof FormData) {
+    console.log('[AuthContext Interceptor] Detected FormData, deleting Content-Type header');
+    delete config.headers['Content-Type'];
+    console.log('[AuthContext Interceptor] Headers after deletion:', config.headers);
+  }
+
+  return config;
 });
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -183,7 +208,20 @@ const markEmailVerified = () => {
   try {
     await ensureCsrf();
     const res = await axiosInstance.get('/api/user-profile/');
-    const userData = res.data as User;
+    
+    // Transform camelCase response to snake_case for User interface
+    const userData: User = {
+      id: res.data.id,
+      email: res.data.email,
+      role: res.data.role,
+      name: res.data.name,
+      profile_picture: res.data.profilePicture || res.data.profile_picture,
+      banner_media: res.data.bannerMedia || res.data.banner_media,
+      organizer_bio: res.data.organizerBio || res.data.organizer_bio,
+      email_verified: res.data.emailVerified || res.data.email_verified,
+      phone_number: res.data.phoneNumber || res.data.phone_number,
+      birth_date: res.data.birthDate || res.data.birth_date,
+    };
 
     setUser(userData);
     setUserRole(userData.role);
@@ -265,20 +303,34 @@ const markEmailVerified = () => {
         throw new Error('Invalid response format from server');
       }
 
+      // Transform camelCase to snake_case
+      const userData: User = {
+        id: res.data.user.id,
+        email: res.data.user.email,
+        role: res.data.user.role,
+        name: res.data.user.name,
+        profile_picture: res.data.user.profilePicture || res.data.user.profile_picture,
+        banner_media: res.data.user.bannerMedia || res.data.user.banner_media,
+        organizer_bio: res.data.user.organizerBio || res.data.user.organizer_bio,
+        email_verified: res.data.user.emailVerified || res.data.user.email_verified,
+        phone_number: res.data.user.phoneNumber || res.data.user.phone_number,
+        birth_date: res.data.user.birthDate || res.data.user.birth_date,
+      };
+
       // Set user data
-      setUser(res.data.user);
-      setUserRole(res.data.user.role);
+      setUser(userData);
+      setUserRole(userData.role);
 
       // Store user data
-      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(res.data.user));
-      sessionStorage.setItem(USER_ROLE_KEY, res.data.user.role);
-      localStorage.setItem(USER_ROLE_KEY, res.data.user.role);
+      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+      sessionStorage.setItem(USER_ROLE_KEY, userData.role);
+      localStorage.setItem(USER_ROLE_KEY, userData.role);
 
       // If the user is an organizer, immediately fetch and store organizer data
-      if (res.data.user.role === 'organizer' && res.data.user.id) {
+      if (userData.role === 'organizer' && userData.id) {
         try {
           const organizerData = await organizerService.getOrganizerByUserId(
-            res.data.user.id
+            userData.id
           );
           if (organizerData) {
             organizerService.storeOrganizerInSession(organizerData);
@@ -288,7 +340,7 @@ const markEmailVerified = () => {
         }
       }
 
-      return res.data;
+      return { user: userData };
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -317,16 +369,30 @@ const markEmailVerified = () => {
         throw new Error('Invalid response format from server');
       }
 
+      // Transform camelCase to snake_case
+      const userData: User = {
+        id: res.data.user.id,
+        email: res.data.user.email,
+        role: res.data.user.role,
+        name: res.data.user.name,
+        profile_picture: res.data.user.profilePicture || res.data.user.profile_picture,
+        banner_media: res.data.user.bannerMedia || res.data.user.banner_media,
+        organizer_bio: res.data.user.organizerBio || res.data.user.organizer_bio,
+        email_verified: res.data.user.emailVerified || res.data.user.email_verified,
+        phone_number: res.data.user.phoneNumber || res.data.user.phone_number,
+        birth_date: res.data.user.birthDate || res.data.user.birth_date,
+      };
+
       // Set user data
-      setUser(res.data.user);
-      setUserRole(res.data.user.role);
+      setUser(userData);
+      setUserRole(userData.role);
 
       // Store user data
-      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(res.data.user));
-      sessionStorage.setItem(USER_ROLE_KEY, res.data.user.role);
-      localStorage.setItem(USER_ROLE_KEY, res.data.user.role);
+      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+      sessionStorage.setItem(USER_ROLE_KEY, userData.role);
+      localStorage.setItem(USER_ROLE_KEY, userData.role);
 
-      return res.data;
+      return { user: userData };
     } catch (error) {
       console.error('Signup error:', error);
 
@@ -421,16 +487,73 @@ const markEmailVerified = () => {
     }
 
     try {
-      // Replace with real API when ready
-      const updatedUser = { ...user, ...profileData };
+      await primeCsrf();
+      
+      // Create FormData for multipart/form-data if there are files
+      const hasFiles = profileData.profile_picture instanceof File || profileData.banner_media instanceof File;
+      
+      let requestData: any;
+      
+      if (hasFiles) {
+        const formData = new FormData();
+        
+        // Add text fields
+        if (profileData.name !== undefined) formData.append('name', profileData.name);
+        if (profileData.organizer_bio !== undefined) formData.append('organizer_bio', profileData.organizer_bio);
+        
+        // Add files
+        if (profileData.profile_picture instanceof File) {
+          formData.append('profile_picture', profileData.profile_picture);
+          console.log('Adding profile_picture to FormData:', profileData.profile_picture.name);
+        }
+        if (profileData.banner_media instanceof File) {
+          formData.append('banner_media', profileData.banner_media);
+          console.log('Adding banner_media to FormData:', profileData.banner_media.name);
+        }
+        
+        requestData = formData;
+        console.log('Sending FormData with files to /api/update-profile/');
+        console.log('requestData type:', requestData instanceof FormData ? 'FormData' : typeof requestData);
+        console.log('requestData:', requestData);
+        // Don't set Content-Type manually - axios will set it with the correct boundary
+      } else {
+        // JSON request for text-only updates
+        requestData = profileData;
+        console.log('Sending JSON data to /api/update-profile/:', requestData);
+      }
+      
+      console.log('About to send request. RequestData instanceof FormData?', requestData instanceof FormData);
+      
+      const res = await axiosInstance.patch('/api/update-profile/', requestData);
+      console.log('Update profile response:', res.data);
+      
+      // Transform camelCase response to snake_case for User interface
+      const updatedUser: User = {
+        id: res.data.id,
+        email: res.data.email,
+        role: res.data.role,
+        name: res.data.name,
+        profile_picture: res.data.profilePicture || res.data.profile_picture,
+        banner_media: res.data.bannerMedia || res.data.banner_media,
+        organizer_bio: res.data.organizerBio || res.data.organizer_bio,
+        email_verified: res.data.emailVerified || res.data.email_verified,
+        phone_number: res.data.phoneNumber || res.data.phone_number,
+        birth_date: res.data.birthDate || res.data.birth_date,
+      };
 
-      // Update local storage + state
-      localStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
+      console.log('Transformed user data:', updatedUser);
+
+      // Update state and storage
       setUser(updatedUser);
+      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
 
       return updatedUser;
     } catch (error) {
       console.error('Error updating profile:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+      }
       throw error;
     }
   };
@@ -499,14 +622,28 @@ const markEmailVerified = () => {
 
       const data = response.data;
 
-      setUser(data.user);
-      setUserRole(data.user.role);
+      // Transform camelCase to snake_case
+      const transformedUser: User = {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.role,
+        name: data.user.name,
+        profile_picture: data.user.profilePicture || data.user.profile_picture,
+        banner_media: data.user.bannerMedia || data.user.banner_media,
+        organizer_bio: data.user.organizerBio || data.user.organizer_bio,
+        email_verified: data.user.emailVerified || data.user.email_verified,
+        phone_number: data.user.phoneNumber || data.user.phone_number,
+        birth_date: data.user.birthDate || data.user.birth_date,
+      };
 
-      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
-      sessionStorage.setItem(USER_ROLE_KEY, data.user.role);
-      localStorage.setItem(USER_ROLE_KEY, data.user.role);
+      setUser(transformedUser);
+      setUserRole(transformedUser.role);
 
-      return data;
+      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(transformedUser));
+      sessionStorage.setItem(USER_ROLE_KEY, transformedUser.role);
+      localStorage.setItem(USER_ROLE_KEY, transformedUser.role);
+
+      return { user: transformedUser };
     } catch (error) {
       console.error(`Error handling ${provider} OAuth callback:`, error);
       throw error;
@@ -575,5 +712,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-export default AuthContext;

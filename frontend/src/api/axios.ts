@@ -14,6 +14,14 @@ const apiClient = axios.create({
 
 // Add CSRF token to requests if available
 apiClient.interceptors.request.use((config) => {
+  console.log('[Axios Interceptor] Request config:', {
+    url: config.url,
+    method: config.method,
+    dataType: config.data?.constructor?.name,
+    isFormData: config.data instanceof FormData,
+    headers: config.headers
+  });
+
   const csrfToken = document.cookie
     .split('; ')
     .find(row => row.startsWith('csrftoken='))
@@ -25,7 +33,9 @@ apiClient.interceptors.request.use((config) => {
 
   // Remove Content-Type for FormData to let browser set it with boundary
   if (config.data instanceof FormData) {
+    console.log('[Axios Interceptor] Detected FormData, deleting Content-Type header');
     delete config.headers['Content-Type'];
+    console.log('[Axios Interceptor] Headers after deletion:', config.headers);
   }
 
   return config;

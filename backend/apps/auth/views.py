@@ -267,12 +267,20 @@ def user_profile(request):
         except (ValueError, AttributeError):
             profile_picture_url = None
     
+    banner_media_url = None
+    if hasattr(user, 'banner_media') and user.banner_media:
+        try:
+            banner_media_url = user.banner_media.url
+        except (ValueError, AttributeError):
+            banner_media_url = None
+    
     return Response({
         "id": user.id,
         "email": user.email,
         "role": user.role,
         "name": getattr(user, "name", ""),
         "profile_picture": profile_picture_url,
+        "banner_media": banner_media_url,
         "email_verified": getattr(user, "email_verified", False),
         "organizer_bio": getattr(user, "organizer_bio", None)
     })
@@ -502,4 +510,83 @@ def get_organizer_by_user_id(request, user_id):
         return Response({
             'error': 'server_error',
             'message': 'Failed to fetch organizer data'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PATCH', 'PUT'])
+@permission_classes([IsAuthenticated, IsEmailVerified])
+def update_profile(request):
+    """
+    Update user profile information including name, organizer_bio, profile_picture, and banner_media.
+    
+    Accepts multipart/form-data for file uploads or application/json for text updates.
+    """
+    user = request.user
+    
+    try:
+        logger.info(f"Update profile request data keys: {request.data.keys()}")
+        logger.info(f"Update profile request FILES keys: {request.FILES.keys()}")
+        
+        # Handle text fields
+        if 'name' in request.data:
+            user.name = request.data['name']
+            logger.info(f"Updated name to: {user.name}")
+        
+        if 'organizer_bio' in request.data:
+            user.organizer_bio = request.data['organizer_bio']
+            logger.info(f"Updated organizer_bio")
+        
+        # Handle file uploads
+        if 'profile_picture' in request.FILES:
+            user.profile_picture = request.FILES['profile_picture']
+            logger.info(f"Updated profile_picture: {request.FILES['profile_picture'].name}")
+        
+        if 'banner_media' in request.FILES:
+            user.banner_media = request.FILES['banner_media']
+            logger.info(f"Updated banner_media: {request.FILES['banner_media'].name}")
+        
+        # Save the user
+        user.save()
+        logger.info(f"User saved. Banner media field: {user.banner_media}")
+        
+        # Invalidate cache
+        invalidate_user_cache(user.id)
+        
+        # Return updated user data
+        profile_picture_url = None
+        if hasattr(user, 'profile_picture') and user.profile_picture:
+            try:
+                profile_picture_url = user.profile_picture.url
+            except (ValueError, AttributeError):
+                profile_picture_url = None
+        
+        banner_media_url = None
+        if hasattr(user, 'banner_media') and user.banner_media:
+            try:
+                banner_media_url = user.banner_media.url
+                logger.info(f"Banner media URL: {banner_media_url}")
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Error getting banner_media URL: {e}")
+                banner_media_url = None
+        else:
+            logger.warning(f"No banner_media found for user. Has attr: {hasattr(user, 'banner_media')}, Value: {getattr(user, 'banner_media', 'N/A')}")
+        
+        logger.info(f"Profile updated successfully for user: {user.email}")
+        
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'role': user.role,
+            'name': user.name,
+            'profile_picture': profile_picture_url,
+            'banner_media': banner_media_url,
+            'organizer_bio': user.organizer_bio,
+            'email_verified': user.email_verified,
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        logger.error(f"Error updating profile for user {user.email}: {str(e)}")
+        return Response({
+            'error': 'update_failed',
+            'message': 'Failed to update profile'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     SignupView, login, LogoutView, LogoutAllView, user_profile,
-    verify_email, resend_verification_email, get_organizer_by_user_id
+    verify_email, resend_verification_email, get_organizer_by_user_id,
+    update_profile
 )
 from .views_verification import VerificationStatusView
 from .views_auth import TokenRefreshView
@@ -19,6 +20,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="logout"),
     path("logout-all/", LogoutAllView.as_view(), name="logout-all"),
     path("user-profile/", user_profile, name="user_profile"),
+    path("update-profile/", update_profile, name="update_profile"),
     path("organizers/user/<int:user_id>/", get_organizer_by_user_id, name="get_organizer"),
 
     # ==============================================================================

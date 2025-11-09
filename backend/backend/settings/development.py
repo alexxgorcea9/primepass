@@ -95,9 +95,10 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Create media directory if it doesn't exist
+# Create media directories if they don't exist
 import os
 os.makedirs(MEDIA_ROOT / 'profiles', exist_ok=True)
+os.makedirs(MEDIA_ROOT / 'banners', exist_ok=True)
 
 # ==============================================================================
 # CORS CONFIGURATION
