@@ -243,7 +243,7 @@ export default function EventDetailsNavBar({
               key={item.name}
               onClick={() => onTabChange(index)}
               className={`
-                w-12 h-12 p-2.5 rounded-full 
+                w-12 h-12 p-2.5 rounded-full backdrop-blur-[40px]
                 inline-flex flex-col justify-center items-center 
                 gap-2.5 overflow-hidden transition-colors
                 ${isActive ? 'bg-white' : 'bg-BG-1'}

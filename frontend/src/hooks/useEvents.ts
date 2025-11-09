@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { eventsApi, type Event, type PaginatedResponse } from '@/api/events';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { eventsApi, type Event, type PaginatedResponse, type EventMedia } from '@/api/events';
 
 // Query keys factory for better cache management
 export const eventKeys = {
@@ -8,6 +8,7 @@ export const eventKeys = {
   finished: () => [...eventKeys.all, 'finished'] as const,
   myEvents: () => [...eventKeys.all, 'my-events'] as const,
   detail: (eventId: number) => [...eventKeys.all, 'detail', eventId] as const,
+  media: (eventId: number) => [...eventKeys.all, 'media', eventId] as const,
 };
 
 // Hook for upcoming events
@@ -59,5 +60,28 @@ export const useEventDetail = (eventId: number) => {
     queryFn: () => eventsApi.getEventDetail(eventId),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
+  });
+};
+
+// Hook for fetching event media
+export const useEventMedia = (eventId: number, enabled = true) => {
+  return useQuery<EventMedia[]>({
+    queryKey: eventKeys.media(eventId),
+    queryFn: () => eventsApi.getEventMedia(eventId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+    enabled, // Only fetch if enabled
+  });
+};
+
+// Hook for fetching media for multiple events
+export const useEventsMedia = (events: Event[] | undefined) => {
+  return useQueries({
+    queries: (events || []).map((event) => ({
+      queryKey: eventKeys.media(event.id),
+      queryFn: () => eventsApi.getEventMedia(event.id),
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
+    })),
   });
 };

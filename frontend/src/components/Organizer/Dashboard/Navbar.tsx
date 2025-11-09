@@ -23,14 +23,14 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
           <>
             <button
               onClick={() => onIconClick?.('notifications')}
-              className="w-12 h-12 p-2.5 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+              className="w-12 h-12 p-2.5 bg-white/5 backdrop-blur-[40px] rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
               aria-label="Notifications"
             >
               <img src={NotificationsIcon} alt="Notifications" className="w-4 h-4" />
             </button>
             <button
               onClick={() => onIconClick?.('ticket')}
-              className="w-12 h-12 p-2.5 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+              className="w-12 h-12 p-2.5 bg-white/5 backdrop-blur-[40px] rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
               aria-label="Ticket"
             >
               <img src={TicketIcon} alt="Ticket" className="w-4 h-4" />
@@ -42,7 +42,7 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
         return (
           <button
             onClick={() => navigate('/create-event')}
-            className="w-12 h-12 p-2.5 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-12 h-12 p-2.5 bg-white/5 backdrop-blur-[40px] rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
             aria-label="Create Event"
           >
             <img src={AddIcon} alt="Create Event" className="w-4 h-4" />
@@ -53,7 +53,7 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
         return (
           <button
             onClick={() => onIconClick?.('settings')}
-            className="w-12 h-12 p-2.5 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-12 h-12 p-2.5 bg-white/5 backdrop-blur-[40px] rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-4 h-4 text-[#F7F7F7]" strokeWidth={1.5} />
@@ -86,7 +86,7 @@ export default function Navbar({ type, avatarUrl, onIconClick }: NavbarProps) {
               }}
             />
           ) : (
-            <div className="w-full h-full bg-white/5 flex items-center justify-center">
+            <div className="w-full h-full bg-white/5 backdrop-blur-[40px] flex items-center justify-center">
               <img src={ProfileIcon} alt="Profile" className="w-4 h-4" />
             </div>
           )}

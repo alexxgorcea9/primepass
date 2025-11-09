@@ -16,6 +16,7 @@ export interface Event {
   organizer: {
     id: number;
   };
+  organizerProfilePicture?: string;
   title: string;
   shortDescription: string;
   location: string;
@@ -138,6 +139,17 @@ export const eventsApi = {
     }
   },
 
+  // Get event media for an event
+  getEventMedia: async (eventId: number): Promise<EventMedia[]> => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}/media/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching event media:', error);
+      throw error;
+    }
+  },
+
   // Create event with all related data (bulk creation)
   // Supports multipart/form-data for image upload
   bulkCreate: async (eventData: BulkEventCreateData): Promise<any> => {
@@ -241,4 +253,13 @@ export interface MediaData {
   url: string;
   type: 'image' | 'video';
   isFeatured?: boolean;
+}
+
+// EventMedia from backend
+export interface EventMedia {
+  id: number;
+  mediaType: 'image' | 'video';
+  file: string;
+  isFeatured: boolean;
+  uploadedAt: string;
 }

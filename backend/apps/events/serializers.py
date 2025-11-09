@@ -54,6 +54,7 @@ class EventListSerializer(serializers.ModelSerializer):
     shortDescription = serializers.CharField(source='short_description')
     isFinished = serializers.BooleanField(source='is_finished')
     organizer = serializers.SerializerMethodField()
+    organizerProfilePicture = serializers.SerializerMethodField()
     mediaCount = serializers.IntegerField(source='media.count', read_only=True)
     
     def get_heroImageUrl(self, obj):
@@ -61,12 +62,19 @@ class EventListSerializer(serializers.ModelSerializer):
         if obj.hero_image:
             return obj.hero_image.url
         return None
+    
+    def get_organizerProfilePicture(self, obj):
+        """Return organizer's profile picture URL if exists"""
+        if obj.organizer and obj.organizer.profile_picture:
+            return obj.organizer.profile_picture.url
+        return None
 
     class Meta:
         model = Event
         fields = [
             'id',
             'organizer',
+            'organizerProfilePicture',
             'title',
             'shortDescription',
             'location',
@@ -91,6 +99,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     organizer = serializers.SerializerMethodField()
+    organizerProfilePicture = serializers.SerializerMethodField()
     media = EventMediaSerializer(many=True, read_only=True)
     teamMembers = TeamMemberSerializer(source='team_members', many=True, read_only=True)
     
@@ -99,12 +108,19 @@ class EventDetailSerializer(serializers.ModelSerializer):
         if obj.hero_image:
             return obj.hero_image.url
         return None
+    
+    def get_organizerProfilePicture(self, obj):
+        """Return organizer's profile picture URL if exists"""
+        if obj.organizer and obj.organizer.profile_picture:
+            return obj.organizer.profile_picture.url
+        return None
 
     class Meta:
         model = Event
         fields = [
             'id',
             'organizer',
+            'organizerProfilePicture',
             'title',
             'description',
             'shortDescription',
