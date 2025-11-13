@@ -76,6 +76,7 @@ class EventListSerializer(serializers.ModelSerializer):
             'organizer',
             'organizerProfilePicture',
             'title',
+            'description',
             'shortDescription',
             'location',
             'heroImageUrl',

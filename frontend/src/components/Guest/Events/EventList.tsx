@@ -175,7 +175,28 @@ function List({ events, open }: { events: EventWithMedia[]; open: (id: number) =
 }
 
 function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) {
-  const featuredMedia = event.media.find(m => m.isFeatured) || event.media[0];
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  
+  // Create array of all images (hero + media)
+  const allImages = [event.heroImageUrl, ...event.media.map(m => m.file)];
+  
+  // Trim description to approximately 150 characters
+  const MAX_DESCRIPTION_LENGTH = 150;
+  const description = (event.description && event.description.trim()) ? event.description : event.shortDescription;
+  const shouldTrimDescription = description.length > MAX_DESCRIPTION_LENGTH;
+  const trimmedDescription = shouldTrimDescription && !showFullDescription
+    ? description.substring(0, MAX_DESCRIPTION_LENGTH) + '...'
+    : description;
+  
+  // Debug log
+  console.log('Event data:', {
+    title: event.title,
+    hasDescription: !!event.description,
+    description: event.description,
+    shortDescription: event.shortDescription,
+    usingDescription: description === event.description
+  });
   
   return (
     <>
@@ -189,48 +210,98 @@ function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) 
         onClick={close}
       />
       <div className="card-content-container open">
+
         <motion.div
           className="card-content"
           layoutId={`card-container-${event.id}`}
         >
+          <GradualBlur
+            target="parent"
+            position="top"
+            height="6rem"
+            strength={2}
+            divCount={5}
+            curve="bezier"
+            exponential={true}
+            opacity={1}
+            zIndex={40}
+          />
+
+          <GradualBlur
+            target="parent"
+            position="bottom"
+            height="6rem"
+            strength={2}
+            divCount={5}
+            curve="bezier"
+            exponential={true}
+            opacity={1}
+            zIndex={40}
+          />
+
           <motion.div
             className="card-image-container"
             layoutId={`card-image-container-${event.id}`}
           >
             <motion.img
               className="card-image"
-              src={featuredMedia?.file || event.heroImageUrl}
+              src={allImages[currentImageIndex]}
               alt={event.title}
               layoutId={`card-image-${event.id}`}
             />
+            
+            {/* Navigation dots */}
+            <div className="navigation-dots">
+              {allImages.map((_, index) => (
+                <button
+                  key={index}
+                  className={`nav-dot ${index === currentImageIndex ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(index);
+                  }}
+                  aria-label={`View image ${index + 1}`}
+                />
+              ))}
+            </div>
           </motion.div>
           <motion.div
             className="title-container"
             layoutId={`title-container-${event.id}`}
             layout="position"
           >
-            <span className="h6">{event.location}</span>
-            <h2 className="h3">{event.title}</h2>
+            <div className="footer-item">
+              <img src={Location} alt="Location" className="w-3 h-3" />
+              <span className="text-sm text-BG">{event.location}</span>
+            </div>
+            <div className="footer-item">
+              <img src={Calendar} alt="Calendar" className="w-3 h-3" />
+              <span className="text-sm text-BG">
+                {formatDate(event.date)}
+              </span>
+            </div>
+            <div className="footer-item">
+              <img src={Clock} alt="Clock" className="w-3 h-3" />
+              <span className="text-sm text-BG">{formatTime(event.time)}</span>
+            </div>
           </motion.div>
-          <motion.div className="content-container small">
-            <p className="big">{event.shortDescription}</p>
-            <p className="big">Date: {formatDate(event.date)}</p>
-            <p className="big">Time: {formatTime(event.time)}</p>
-            {event.media.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Gallery</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {event.media.slice(0, 4).map((media) => (
-                    <img
-                      key={media.id}
-                      src={media.file}
-                      alt="Event media"
-                      className="w-full h-32 object-cover rounded"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          <motion.div className="content-container">
+            <h1 className="event-title">{event.title}</h1>
+            
+            <div className="event-description">
+              <p>{trimmedDescription}</p>
+              {shouldTrimDescription && (
+                <button
+                  className="see-more-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullDescription(!showFullDescription);
+                  }}
+                >
+                  {showFullDescription ? 'see less' : 'see more'}
+                </button>
+              )}
+            </div>
           </motion.div>
         </motion.div>
       </div>
@@ -420,8 +491,9 @@ const StyleSheet = () => {
                 position: fixed;
                 z-index: 1000001;
                 overflow: hidden;
-                padding: 40px 0;
+                padding: 10px;
                 justify-content: center;
+                align-items: center;
             }
 
             .dark .h3, .dark span {
@@ -440,11 +512,11 @@ const StyleSheet = () => {
             }
 
             .open .card-content {
-                width: unset;
-                height: unset;
-                max-width: 700px;
-                overflow: hidden;
-                pointer-events: none;
+                width: calc(100vw - 20px);
+                height: calc(100vh - 20px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                pointer-events: auto;
             }
 
             .card-open-link {
@@ -492,8 +564,17 @@ const StyleSheet = () => {
             }
 
             .open .title-container {
-                top: 30px;
-                left: 30px;
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 5px;
+                z-index: 50;
+                flex-wrap: wrap;
             }
 
             .organizer-profile {
@@ -619,9 +700,96 @@ const StyleSheet = () => {
             }
 
             .content-container {
-                padding: 35px;
+                padding: 20px;
                 max-width: 700px;
                 width: 90vw;
+            }
+
+            .open .content-container {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 60px 20px 30px 20px;
+                max-width: 100%;
+                width: 100%;
+                z-index: 70;
+                pointer-events: auto;
+                min-height: 200px;
+            }
+
+            .navigation-dots {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 8px;
+                z-index: 80;
+                padding: 8px 12px;
+                border-radius: 1000px;
+                pointer-events: auto;
+            }
+
+            .open .card-image-container .navigation-dots {
+                bottom: 20px;
+            }
+
+            .nav-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.4);
+                border: none;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                padding: 0;
+                pointer-events: auto;
+            }
+
+            .nav-dot.active {
+                background: rgba(255, 255, 255, 1);
+                width: 24px;
+                border-radius: 4px;
+            }
+
+            .nav-dot:hover {
+                background: rgba(255, 255, 255, 0.6);
+            }
+
+            .event-title {
+                font-size: 28px;
+                font-weight: 700;
+                color: #fff;
+                margin: 0 0 16px 0;
+                line-height: 1.2;
+            }
+
+            .event-description {
+                color: rgba(255, 255, 255, 0.85);
+                font-size: 16px;
+                line-height: 1.5;
+                margin-bottom: 20px;
+            }
+
+            .event-description p {
+                margin: 0 0 8px 0;
+            }
+
+            .see-more-btn {
+                background: none;
+                border: none;
+                color: rgba(255, 255, 255, 0.6);
+                font-size: 16px;
+                cursor: pointer;
+                padding: 0;
+                text-decoration: none;
+                transition: color 0.2s ease;
+                font-weight: 400;
+            }
+
+            .see-more-btn:hover {
+                color: rgba(255, 255, 255, 0.9);
             }
 
             @media only screen and (max-width: 639px) {
@@ -638,7 +806,7 @@ const StyleSheet = () => {
                 }
 
                 #app-store .card-content-container.open {
-                    padding: 0;
+                    padding: 10px;
                 }
             }
 

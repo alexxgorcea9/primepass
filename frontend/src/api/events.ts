@@ -18,6 +18,7 @@ export interface Event {
   };
   organizerProfilePicture?: string;
   title: string;
+  description?: string;
   shortDescription: string;
   location: string;
   heroImageUrl: string;
