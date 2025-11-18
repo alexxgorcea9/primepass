@@ -337,7 +337,8 @@ class EventViewSet(viewsets.ModelViewSet):
         CacheService.set(cache_key, response_data, EventCacheKeys.ORGANIZER_TTL)
         return Response(response_data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            parser_classes=[MultiPartParser, FormParser])
     def upload_media(self, request, pk=None):
         """
         Upload media (image/video) to an event.

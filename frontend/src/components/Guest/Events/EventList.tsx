@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react"
 import React, { useState } from "react"
+import { useNavigate } from 'react-router-dom'
 import type { Event, EventMedia } from '@/api/events'
 import GradualBlur from '@components/GradualBlur';
 import Location from '@/assets/location.svg';
@@ -174,29 +175,40 @@ function List({ events, open }: { events: EventWithMedia[]; open: (id: number) =
   )
 }
 
-function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) {
+function Item({ event, close, navigate }: { event: EventWithMedia; close: VoidFunction; navigate: ReturnType<typeof useNavigate> }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [descriptionHeight, setDescriptionHeight] = useState(0);
+  const descriptionRef = React.useRef<HTMLDivElement>(null);
+  
+  // Prepare media assets for gallery preview
+  const mediaAssets = event.media?.slice(0, 4) || [];
+  const remainingCount = (event.media?.length || 0) > 4 ? (event.media?.length || 0) - 3 : 0;
+  const displayAssets = remainingCount > 0 ? mediaAssets.slice(0, 3) : mediaAssets;
+  
+  // Update description height when it changes
+  React.useEffect(() => {
+    if (descriptionRef.current) {
+      setDescriptionHeight(descriptionRef.current.scrollHeight);
+    }
+  }, [showFullDescription, event.description]);
+  
+  // Calculate blur height based on description content
+  // Base blur of 6rem (~96px) + additional height for expanded content
+  const blurHeight = showFullDescription && descriptionHeight > 100 
+    ? `${Math.min(descriptionHeight + 100, 500)}px` 
+    : '6rem';
   
   // Create array of all images (hero + media)
-  const allImages = [event.heroImageUrl, ...event.media.map(m => m.file)];
+  const allImages = [event.heroImageUrl, ...(event.media?.map(m => m.file) || [])];
   
   // Trim description to approximately 150 characters
   const MAX_DESCRIPTION_LENGTH = 150;
   const description = (event.description && event.description.trim()) ? event.description : event.shortDescription;
   const shouldTrimDescription = description.length > MAX_DESCRIPTION_LENGTH;
   const trimmedDescription = shouldTrimDescription && !showFullDescription
-    ? description.substring(0, MAX_DESCRIPTION_LENGTH) + '...'
+    ? description.substring(0, MAX_DESCRIPTION_LENGTH).trim()
     : description;
-  
-  // Debug log
-  console.log('Event data:', {
-    title: event.title,
-    hasDescription: !!event.description,
-    description: event.description,
-    shortDescription: event.shortDescription,
-    usingDescription: description === event.description
-  });
   
   return (
     <>
@@ -227,27 +239,75 @@ function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) 
             zIndex={40}
           />
 
-          <GradualBlur
-            target="parent"
-            position="bottom"
-            height="6rem"
-            strength={2}
-            divCount={5}
-            curve="bezier"
-            exponential={true}
-            opacity={1}
-            zIndex={40}
+          {/* Dark overlay for readability */}
+          <motion.div
+            className="dark-overlay"
+            initial={false}
+            animate={{ height: blurHeight }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ 
+              position: 'absolute', 
+              bottom: 0, 
+              left: 0, 
+              right: 0, 
+              pointerEvents: 'none',
+              background: 'linear-gradient(to top, rgba(11, 16, 17, 0.95), rgba(11, 16, 17, 0.7) 50%, transparent)',
+              zIndex: 35
+            }}
           />
+          
+          {/* Blur gradient */}
+          <motion.div
+            initial={false}
+            animate={{ height: blurHeight }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, pointerEvents: 'none' }}
+          >
+            <GradualBlur
+              target="parent"
+              position="bottom"
+              height="100%"
+              strength={2}
+              divCount={5}
+              curve="bezier"
+              exponential={true}
+              opacity={1}
+              zIndex={40}
+            />
+          </motion.div>
 
           <motion.div
             className="card-image-container"
             layoutId={`card-image-container-${event.id}`}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, { offset, velocity }) => {
+              const swipeThreshold = 50;
+              const swipeVelocityThreshold = 500;
+              
+              if (offset.x > swipeThreshold || velocity.x > swipeVelocityThreshold) {
+                // Swiped right - go to previous image
+                setCurrentImageIndex((prev) => 
+                  prev > 0 ? prev - 1 : allImages.length - 1
+                );
+              } else if (offset.x < -swipeThreshold || velocity.x < -swipeVelocityThreshold) {
+                // Swiped left - go to next image
+                setCurrentImageIndex((prev) => 
+                  prev < allImages.length - 1 ? prev + 1 : 0
+                );
+              }
+            }}
           >
             <motion.img
               className="card-image"
               src={allImages[currentImageIndex]}
               alt={event.title}
               layoutId={`card-image-${event.id}`}
+              key={currentImageIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
             />
             
             {/* Navigation dots */}
@@ -285,23 +345,160 @@ function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) 
               <span className="text-sm text-BG">{formatTime(event.time)}</span>
             </div>
           </motion.div>
-          <motion.div className="content-container">
-            <h1 className="event-title">{event.title}</h1>
-            
-            <div className="event-description">
-              <p>{trimmedDescription}</p>
-              {shouldTrimDescription && (
-                <button
-                  className="see-more-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowFullDescription(!showFullDescription);
-                  }}
-                >
-                  {showFullDescription ? 'see less' : 'see more'}
-                </button>
+          <motion.div className="content-container" layout>
+            {/* Tickets button and gallery preview row */}
+            <div style={{width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px'}}>
+              {/* Tickets button */}
+              <div 
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(180deg, rgba(247, 247, 247, 0.20) 0%, rgba(247, 247, 247, 0.30) 100%)',
+                  overflow: 'hidden',
+                  borderRadius: '120px',
+                  outline: '1px rgba(247, 247, 247, 0.30) solid',
+                  outlineOffset: '-0.50px',
+                  backdropFilter: 'blur(20px)',
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                navigate(`/events/${event.id}/tickets`);
+                }}
+              >
+                <div className="text-white text-sm font-['Lufga'] leading-6 whitespace-nowrap">Tickets</div>
+              </div>
+              
+              {/* Gallery preview */}
+              {event.media && event.media.length > 0 && (
+                <div style={{
+                  padding: '4px',
+                  background: 'rgba(247, 247, 247, 0.20)',
+                  overflow: 'hidden',
+                  borderRadius: '40px',
+                  backdropFilter: 'blur(20px)',
+                  display: 'inline-flex',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  {displayAssets.map((asset, index) => (
+                    <img
+                      key={asset.id}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '40px',
+                        objectFit: 'cover'
+                      }}
+                      src={asset.file}
+                      alt={`Media ${index + 1}`}
+                    />
+                  ))}
+                  {remainingCount > 0 && (
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      background: 'rgba(247, 247, 247, 0.30)',
+                      overflow: 'hidden',
+                      borderRadius: '40px',
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <div style={{
+                        color: '#0A0A0A',
+                        fontSize: '12px',
+                        fontFamily: 'Poppins',
+                        fontWeight: '400',
+                        lineHeight: '18px'
+                      }}>+{remainingCount}</div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
+            
+            <motion.h1 
+              className="event-title"
+              layout
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              {event.title}
+            </motion.h1>
+            
+            <motion.div 
+              ref={descriptionRef}
+              className="event-description"
+              initial={false}
+              animate={{ 
+                height: showFullDescription ? 'auto' : 'auto'
+              }}
+              transition={{ 
+                duration: 0.3,
+                ease: "easeInOut"
+              }}
+              layout
+            >
+              <motion.p
+                initial={false}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                {trimmedDescription}
+                {shouldTrimDescription && !showFullDescription && '... '}
+                {shouldTrimDescription && (
+                  <button
+                    className="see-more-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFullDescription(!showFullDescription);
+                    }}
+                  >
+                    {showFullDescription ? 'see less' : 'see more'}
+                  </button>
+                )}
+              </motion.p>
+            </motion.div>
+            
+            {/* Media tabs */}
+            {allImages.length > 1 && (
+              <div style={{
+                width: '100%', 
+                paddingTop: 16, 
+                paddingBottom: 4, 
+                overflow: 'hidden', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: 10, 
+                display: 'flex'
+              }}>
+                {allImages.map((_, index) => (
+                  <div
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(index);
+                    }}
+                    style={{
+                      width: index === currentImageIndex ? 32 : 8,
+                      height: 8,
+                      background: index === currentImageIndex 
+                        ? 'var(--Ivory-White, #F7F7F7)' 
+                        : 'rgba(247, 247, 247, 0.40)',
+                      borderRadius: index === currentImageIndex ? 40 : 9999,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </div>
@@ -311,6 +508,7 @@ function Item({ event, close }: { event: EventWithMedia; close: VoidFunction }) 
 
 function StoreFront({ events }: { events: EventWithMedia[] }) {
   const [openId, open] = useState<number | null>(null)
+  const navigate = useNavigate()
 
   const close = () => open(null)
   const selectedEvent = events.find(e => e.id === openId);
@@ -319,7 +517,7 @@ function StoreFront({ events }: { events: EventWithMedia[] }) {
     <>
       <List events={events} open={open} />
       <AnimatePresence>
-        {openId && selectedEvent && <Item close={close} event={selectedEvent} key="item" />}
+        {openId && selectedEvent && <Item close={close} event={selectedEvent} navigate={navigate} key="item" />}
       </AnimatePresence>
     </>
   )
@@ -514,9 +712,10 @@ const StyleSheet = () => {
             .open .card-content {
                 width: calc(100vw - 20px);
                 height: calc(100vh - 20px);
-                overflow-y: auto;
-                overflow-x: hidden;
+                overflow: hidden;
                 pointer-events: auto;
+                display: flex;
+                flex-direction: column;
             }
 
             .card-open-link {
@@ -548,6 +747,14 @@ const StyleSheet = () => {
 
             .open .card-image-container {
                 z-index: 1;
+                flex: 1;
+                min-height: 0;
+                cursor: grab;
+                touch-action: pan-y;
+            }
+            
+            .open .card-image-container:active {
+                cursor: grabbing;
             }
 
             .title-container {
@@ -685,7 +892,7 @@ const StyleSheet = () => {
                 inset: 0;
                 z-index: 1000000;
                 position: fixed;
-                background: rgba(0, 0, 0, 0.8);
+                background: rgba(0, 0, 0, 1);
                 will-change: opacity;
             }
 
@@ -770,10 +977,14 @@ const StyleSheet = () => {
                 font-size: 16px;
                 line-height: 1.5;
                 margin-bottom: 20px;
+                overflow: hidden;
+                will-change: height;
             }
 
             .event-description p {
-                margin: 0 0 8px 0;
+                margin: 0;
+                transition: opacity 0.2s ease;
+                display: inline;
             }
 
             .see-more-btn {
@@ -786,6 +997,8 @@ const StyleSheet = () => {
                 text-decoration: none;
                 transition: color 0.2s ease;
                 font-weight: 400;
+                display: inline;
+                margin-left: 4px;
             }
 
             .see-more-btn:hover {

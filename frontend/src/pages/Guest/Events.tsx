@@ -15,7 +15,7 @@ const Events = () => {
   // Fetch media for all events
   const mediaQueries = useEventsMedia(events);
   
-  // Combine events with their media
+  // Combine events with their media - use JSON.stringify to track media data changes
   const eventsWithMedia = useMemo(() => {
     if (!events) return [];
     
@@ -23,7 +23,11 @@ const Events = () => {
       ...event,
       media: mediaQueries[index]?.data || [],
     }));
-  }, [events, mediaQueries]);
+  }, [
+    events, 
+    // Track media data changes by stringifying the data
+    mediaQueries.map(q => JSON.stringify(q.data)).join(',')
+  ]);
   
   const isLoading = eventsLoading || mediaQueries.some(q => q.isLoading);
 

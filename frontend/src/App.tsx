@@ -24,6 +24,7 @@ const Settings = React.lazy(() => import('./pages/Organizer/Settings'));
 
 // Guest pages
 const Events = React.lazy(() => import('./pages/Guest/Events'));
+const Tickets = React.lazy(() => import('./pages/Guest/Tickets'));
 
 // Loading component for better UX
 const PageLoader = () => (
@@ -121,6 +122,13 @@ function App() {
           <AuthGuard allowedRoles={['guest']}>
             <Suspense fallback={<PageLoader />}>
               <Events />
+            </Suspense>
+          </AuthGuard>
+        } />
+        <Route path='/events/:event_id/tickets' element={
+          <AuthGuard allowedRoles={['guest']}>
+            <Suspense fallback={<PageLoader />}>
+              <Tickets />
             </Suspense>
           </AuthGuard>
         } />

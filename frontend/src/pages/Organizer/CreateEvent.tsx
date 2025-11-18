@@ -84,6 +84,7 @@ const CreateEvent = () => {
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [createdEventData, setCreatedEventData] = useState<any>(null);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   // Form state - Details tab
   const [eventName, setEventName] = useState('');
@@ -169,6 +170,7 @@ const CreateEvent = () => {
 
     setIsLaunching(true);
     setShowLoadingScreen(true);
+    setUploadProgress({ current: 0, total: 0 });
 
     try {
       // Format date and time for API
@@ -185,9 +187,16 @@ const CreateEvent = () => {
           bookingNumber: ''
         };
 
+        // Extract icon name from SVG path (e.g., "/src/assets/ticket.svg" -> "ticket")
+        const getIconName = (iconPath: string): string => {
+          if (!iconPath) return 'ticket';
+          const filename = iconPath.split('/').pop() || 'ticket';
+          return filename.replace('.svg', '');
+        };
+
         return {
           name: tier.name,
-          icon: tier.icon || 'ticket',
+          icon: getIconName(tier.icon || ''),
           gradientId: tier.gradientId,
           specialRequests: tier.specialRequests || false,
           waves: tierData.waves.map(wave => ({
@@ -214,14 +223,7 @@ const CreateEvent = () => {
         };
       });
 
-      // Transform media data
-      const transformedMedia = galleryMedia.map(media => ({
-        url: media.url,
-        type: media.type,
-        isFeatured: false
-      }));
-
-      // Build the API payload
+      // Prepare event data (without media - will upload separately)
       const eventData: BulkEventCreateData = {
         title: eventName,
         description: eventDescription,
@@ -229,13 +231,40 @@ const CreateEvent = () => {
         location: eventLocation,
         date: date,
         time: time,
-        heroImage: bannerFile || undefined, // Send actual file, not blob URL
+        heroImage: bannerFile || undefined,
         tiers: transformedTiers,
-        media: transformedMedia
       };
 
-      // Call the bulk create API
+      // Step 1: Create the event with bulk_create
       const response = await eventsApi.bulkCreate(eventData);
+      const createdEventId = response.id;
+
+      // Step 2: Upload media files if any
+      if (galleryMedia.length > 0) {
+        setUploadProgress({ current: 0, total: galleryMedia.length });
+        
+        // Upload each media file sequentially
+        for (let i = 0; i < galleryMedia.length; i++) {
+          const media = galleryMedia[i];
+          try {
+            await eventsApi.uploadMedia(
+              createdEventId,
+              media.file,
+              media.type,
+              false // isFeatured - can be made configurable later
+            );
+            setUploadProgress({ current: i + 1, total: galleryMedia.length });
+          } catch (error) {
+            console.error(`Failed to upload media:`, error);
+            // Continue with other uploads even if one fails
+          }
+        }
+        
+        // Invalidate media cache for the created event
+        await queryClient.invalidateQueries({
+          queryKey: eventKeys.media(createdEventId)
+        });
+      }
 
       // Store event data and show success screen
       setCreatedEventData(response);
@@ -248,6 +277,11 @@ const CreateEvent = () => {
         queryKey: eventKeys.myEvents(),
         exact: false
       });
+      
+      // Invalidate upcoming events to show new media on guest events page
+      await queryClient.invalidateQueries({
+        queryKey: eventKeys.upcoming()
+      });
 
     } catch (error: any) {
       console.error('Error launching event:', error);
@@ -255,6 +289,7 @@ const CreateEvent = () => {
       // Hide loading screen on error
       setShowLoadingScreen(false);
       setIsLaunching(false);
+      setUploadProgress({ current: 0, total: 0 });
 
       // Show error message to user
       const errorMessage = error.response?.data?.error

@@ -1,5 +1,4 @@
-import apiClient, { API_BASE_URL } from './axios';
-import axios from 'axios';
+import apiClient from './axios';
 
 
 // Types based on your Django serializer
@@ -151,6 +150,22 @@ export const eventsApi = {
     }
   },
 
+  // Upload media (image/video) to an event
+  uploadMedia: async (eventId: number, file: File, mediaType: 'image' | 'video', isFeatured = false): Promise<EventMedia> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mediaType', mediaType);
+      formData.append('isFeatured', isFeatured.toString());
+      
+      const response = await apiClient.post(`/events/${eventId}/upload_media/`, formData);
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      throw error;
+    }
+  },
+
   // Create event with all related data (bulk creation)
   // Supports multipart/form-data for image upload
   bulkCreate: async (eventData: BulkEventCreateData): Promise<any> => {
@@ -178,21 +193,8 @@ export const eventsApi = {
         formData.append('media', JSON.stringify(eventData.media));
       }
       
-      // Get CSRF token from cookies
-      const csrfToken = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-      
-      // Create a custom config for FormData request
-      // Don't set Content-Type - axios will set it automatically with boundary
-      const response = await axios.post(`${API_BASE_URL}/events/bulk_create/`, formData, {
-        withCredentials: true,
-        headers: {
-          // Include CSRF token but let axios handle Content-Type
-          ...(csrfToken && { 'X-CSRFToken': csrfToken }),
-        },
-      });
+      // Use apiClient - it handles auth cookies, CSRF tokens, and FormData automatically
+      const response = await apiClient.post('/events/bulk_create/', formData);
       return response.data;
     } catch (error) {
       console.error('Error creating event:', error);
