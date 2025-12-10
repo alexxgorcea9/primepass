@@ -32,18 +32,21 @@ app.conf.beat_schedule = {
         'task': 'apps.auth.tasks.monitor_failed_login_attempts',
         'schedule': 3600.0,  # Run every hour
     },
-    'send-event-reminders': {
-        'task': 'apps.events.tasks.send_event_reminders',
-        'schedule': 1800.0,  # Run every 30 minutes
-    },
-    'update-event-analytics': {
-        'task': 'apps.analytics.tasks.update_event_analytics',
-        'schedule': 900.0,   # Run every 15 minutes
-    },
-    'cleanup-old-notifications': {
-        'task': 'apps.notifications.tasks.cleanup_old_notifications',
-        'schedule': 86400.0,  # Run daily
-    },
+    # TODO: Uncomment when apps.events.tasks is created
+    # 'send-event-reminders': {
+    #     'task': 'apps.events.tasks.send_event_reminders',
+    #     'schedule': 1800.0,  # Run every 30 minutes
+    # },
+    # TODO: Uncomment when apps.analytics app is created
+    # 'update-event-analytics': {
+    #     'task': 'apps.analytics.tasks.update_event_analytics',
+    #     'schedule': 900.0,   # Run every 15 minutes
+    # },
+    # TODO: Uncomment when apps.notifications app is created
+    # 'cleanup-old-notifications': {
+    #     'task': 'apps.notifications.tasks.cleanup_old_notifications',
+    #     'schedule': 86400.0,  # Run daily
+    # },
 }
 
 app.conf.timezone = 'UTC'

@@ -20,19 +20,20 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend', '192.168.100.13
 
 INSTALLED_APPS += [
     'django_extensions',
-    'debug_toolbar',
-    'silk',
-
+    # Temporarily disabled to reduce console noise
+    # 'debug_toolbar',
+    # 'silk',
 ]
 
 # ==============================================================================
 # DEVELOPMENT MIDDLEWARE
 # ==============================================================================
 
-MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'silk.middleware.SilkyMiddleware',
-] + MIDDLEWARE
+# Temporarily disabled to reduce console noise
+# MIDDLEWARE = [
+#     'debug_toolbar.middleware.DebugToolbarMiddleware',
+#     'silk.middleware.SilkyMiddleware',
+# ] + MIDDLEWARE
 
 # ==============================================================================
 # DEBUG TOOLBAR CONFIGURATION
@@ -122,12 +123,14 @@ CORS_ALLOW_CREDENTIALS = True
 # LOGGING CONFIGURATION
 # ==============================================================================
 
-LOGGING['handlers']['console']['level'] = 'DEBUG'
-LOGGING['loggers']['django.db.backends'] = {
-    'handlers': ['console'],
-    'level': 'DEBUG',
-    'propagate': False,
-}
+# Set console logging to INFO to reduce noise
+LOGGING['handlers']['console']['level'] = 'INFO'
+# Disable SQL query logging to console
+# LOGGING['loggers']['django.db.backends'] = {
+#     'handlers': ['console'],
+#     'level': 'DEBUG',
+#     'propagate': False,
+# }
 
 # ==============================================================================
 # DEVELOPMENT UTILITIES

@@ -78,8 +78,8 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "apps.auth",
-    "apps.events",
+    "apps.auth.apps.AuthConfig",
+    "apps.events.apps.EventsConfig",
     "apps.concierge",
 ]
 
@@ -278,6 +278,15 @@ APPLE_REDIRECT_URI = config('APPLE_REDIRECT_URI', default='http://localhost:3000
 INSTAGRAM_APP_ID = config('INSTAGRAM_APP_ID', default='')
 INSTAGRAM_APP_SECRET = config('INSTAGRAM_APP_SECRET', default='')
 INSTAGRAM_REDIRECT_URI = config('INSTAGRAM_REDIRECT_URI', default='http://localhost:3000/oauth/instagram/callback')
+
+# ==============================================================================
+# STRIPE CONFIGURATION
+# ==============================================================================
+
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+STRIPE_CURRENCY = config('STRIPE_CURRENCY', default='USD')
 
 # ==============================================================================
 # CORS CONFIGURATION
@@ -490,6 +499,8 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@primepass.com')
+SERVER_EMAIL = config('SERVER_EMAIL', default='server@primepass.com')
 
 # ==============================================================================
 # CUSTOM SETTINGS

@@ -19,7 +19,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+from django.http import HttpResponse
 
+def health(request):
+    return HttpResponse("ok", content_type="text/plain")
 # API URL patterns
 api_v1_patterns = [
     # Auth JWT (DRF SimpleJWT)
@@ -58,12 +61,17 @@ urlpatterns = [
 
 # Development URLs
 if settings.DEBUG:
-    import debug_toolbar
-    
     urlpatterns += [
-        path('__debug__/', include(debug_toolbar.urls)),
-        path('silk/', include('silk.urls', namespace='silk')),
+        path("health/", health, name="health"),
     ]
+    
+    # Only include debug toolbar and silk if they're in INSTALLED_APPS
+    if 'debug_toolbar' in settings.INSTALLED_APPS:
+        import debug_toolbar
+        urlpatterns.append(path('__debug__/', include(debug_toolbar.urls)))
+    
+    if 'silk' in settings.INSTALLED_APPS:
+        urlpatterns.append(path('silk/', include('silk.urls', namespace='silk')))
     
     # Serve media files in development
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

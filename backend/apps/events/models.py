@@ -244,3 +244,262 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.event.title} - {self.title}"
+
+
+# ORDER / PAYMENT / TICKET
+class OrderStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    PAID = "paid", "Paid"
+    CANCELED = "canceled", "Canceled"
+    REfunded = "refunded", "Refunded"
+
+
+class Order(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="orders",
+        db_column="userID",
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        related_name="orders",
+        db_column="eventID",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+    )
+    currency = models.CharField(max_length=10, default="EUR")
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fees = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    payment_refference = models.CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Payment provider reference (e.g. Stripe payment_intent id)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user"], name="order_user_idx"),
+            models.Index(fields=["event"], name="order_event_idx"),
+            models.Index(fields=["status"], name="order_status_idx"),
+            models.Index(fields=["created_at"], name="order_created_at_idx"),
+        ]
+
+    def __str__(self):
+        return f"Order #{self.id} by {self.user} for {self.event}"
+
+    @property
+    def is_paid(self) -> bool:
+        return self.status == OrderStatus.PAID
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    tier = models.ForeignKey(
+        Tier,
+        on_delete=models.PROTECT,
+        related_name="order_items",
+    )
+    wave = models.ForeignKey(
+        Wave,
+        on_delete=models.PROTECT,
+        related_name="order_items",
+        blank = True,
+        null = True,
+    )
+    table = models.ForeignKey(
+        Table,
+        on_delete=models.SET_NULL,
+        related_name="order_items",
+        blank=True,
+        null=True,
+    )
+
+    quantity = models.PositiveIntegerField(default=1)
+
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["order"], name="orderitem_order_idx"),
+            models.Index(fields=["tier"], name="orderitem_tier_idx"),
+            models.Index(fields=["wave"], name="orderitem_wave_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.tier.name} x {self.order}"
+
+    def clean(self):
+        # ensure tier belongs to the same event as the order
+        if self.tier and self.order and self.tier.event_id != self.order.event_id:
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Tier event must match order event.")
+
+class OrderItemAddOn(models.Model):
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name="add_ons",
+    )
+    add_on = models.ForeignKey(
+        AddOn,
+        on_delete=models.PROTECT,
+        related_name="order_item_add_ons",
+    )
+
+    quantity = models.PositiveIntegerField(default=1)
+
+    # Monetary values copied from AddOn at purchase time
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["order_item"], name="orderitemaddon_item_idx"),
+            models.Index(fields=["add_on"], name="orderitemaddon_addon_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.add_on.name} for {self.order_item}"
+
+class TicketStatus(models.TextChoices):
+    VALID = "valid", "Valid"
+    USED = "used", "Used / Checked-in"
+    CANCELED = "canceled", "Canceled"
+
+
+class Ticket(models.Model):
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+        help_text="Order item that created this ticket.",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+        db_column="userID",
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+        db_column="eventID",
+    )
+    tier = models.ForeignKey(
+        Tier,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+    )
+    wave = models.ForeignKey(
+        Wave,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+        blank=True,
+        null=True,
+    )
+    table = models.ForeignKey(
+        Table,
+        on_delete=models.SET_NULL,
+        related_name="tickets",
+        blank=True,
+        null=True,
+        help_text="Assigned table for this ticket if applicable.",
+    )
+
+    # Optional explicit privileges (usually implied by tier)
+    privileges = models.ManyToManyField(
+        Privilege,
+        related_name="tickets",
+        blank=True,
+        help_text="Overrides or additional privileges for this ticket (optional).",
+    )
+
+    # General ticket properties
+    status = models.CharField(
+        max_length=20,
+        choices=TicketStatus.choices,
+        default=TicketStatus.VALID,
+    )
+
+    ticket_code = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="Public identifier/QR payload for the ticket.",
+    )
+    holder_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Name printed on the ticket (optional, can differ from account name).",
+    )
+
+    checked_in_at = models.DateTimeField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["event", "tier", "id"]
+        indexes = [
+            models.Index(fields=["user"], name="ticket_user_idx"),
+            models.Index(fields=["event"], name="ticket_event_idx"),
+            models.Index(fields=["tier"], name="ticket_tier_idx"),
+            models.Index(fields=["status"], name="ticket_status_idx"),
+            models.Index(fields=["ticket_code"], name="ticket_code_idx"),
+        ]
+
+    def __str__(self):
+        return f"Ticket {self.ticket_code} ({self.tier.name} - {self.event.title})"
+
+    @property
+    def is_checked_in(self) -> bool:
+        return self.status == TicketStatus.USED
+
+    def mark_checked_in(self, commit: bool = True):
+        if self.status != TicketStatus.USED:
+            self.status = TicketStatus.USED
+            self.checked_in_at = timezone.now()
+            if commit:
+                self.save(update_fields=["status", "checked_in_at"])
+
+
+class TicketAddOn(models.Model):
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.CASCADE,
+        related_name="ticket_add_ons",
+    )
+    add_on = models.ForeignKey(
+        AddOn,
+        on_delete=models.PROTECT,
+        related_name="ticket_add_ons",
+    )
+
+    quantity = models.PositiveIntegerField(default=1)
+
+    # Snapshot of price at time of purchase
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["ticket"], name="ticketaddon_ticket_idx"),
+            models.Index(fields=["add_on"], name="ticketaddon_addon_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.add_on.name} on {self.ticket}"

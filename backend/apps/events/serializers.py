@@ -3,8 +3,11 @@ import string
 import secrets
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
-from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post
+from decimal import Decimal
+from uuid import uuid4
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post,Order, OrderItem, OrderItemAddOn, Ticket, TicketAddOn,OrderStatus
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -688,3 +691,228 @@ class JoinTeamSerializer(serializers.Serializer):
             user.save(update_fields=['role'])
         
         return event
+
+### TICKET VIEWS
+class TicketListSerializer(serializers.ModelSerializer):
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    event_date = serializers.DateField(source="event.date", read_only=True)
+    event_time = serializers.TimeField(source="event.time", read_only=True)
+    event_location = serializers.CharField(source="event.location", read_only=True)
+
+    tier_name = serializers.CharField(source="tier.name", read_only=True)
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_code",
+            "status",
+            "event",
+            "event_title",
+            "event_date",
+            "event_time",
+            "event_location",
+            "tier",
+            "tier_name",
+            "created_at",
+        ]
+
+
+class TicketDetailSerializer(serializers.ModelSerializer):
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    event_date = serializers.DateField(source="event.date", read_only=True)
+    event_time = serializers.TimeField(source="event.time", read_only=True)
+    event_location = serializers.CharField(source="event.location", read_only=True)
+
+    tier_name = serializers.CharField(source="tier.name", read_only=True)
+    wave_name = serializers.SerializerMethodField()
+    table_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_code",
+            "status",
+            "holder_name",
+            "event",
+            "event_title",
+            "event_date",
+            "event_time",
+            "event_location",
+            "tier",
+            "tier_name",
+            "wave",
+            "wave_name",
+            "table",
+            "table_name",
+            "checked_in_at",
+            "created_at",
+        ]
+
+    def get_wave_name(self, obj):
+        return getattr(obj.wave, "name", None)
+
+    def get_table_name(self, obj):
+        return getattr(obj.table, "table_name", None)
+
+
+# ================================================
+# BUY TICKETS (Order creation input)
+# ================================================
+
+class BuyAddOnSerializer(serializers.Serializer):
+    add_on_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class BuyItemSerializer(serializers.Serializer):
+    tier_id = serializers.IntegerField()
+    wave_id = serializers.IntegerField(required=False, allow_null=True)
+    table_id = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(min_value=1)
+    add_ons = BuyAddOnSerializer(many=True, required=False)
+
+
+class BuyTicketsSerializer(serializers.Serializer):
+    """
+    Payload the frontend sends when a guest buys tickets.
+
+    Example:
+    {
+      "event_id": 1,
+      "items": [
+        {
+          "tier_id": 10,
+          "wave_id": 3,
+          "quantity": 2,
+          "add_ons": [
+            {"add_on_id": 5, "quantity": 1}
+          ]
+        },
+        {
+          "tier_id": 11,
+          "quantity": 1,
+          "table_id": 2
+        }
+      ]
+    }
+    """
+    event_id = serializers.IntegerField()
+    items = BuyItemSerializer(many=True)
+
+    def validate(self, data):
+        event = get_object_or_404(Event, pk=data["event_id"])
+        data["event"] = event
+
+        # Attach real model instances for tiers/waves/tables/addons
+        for item in data["items"]:
+            tier = get_object_or_404(Tier, pk=item["tier_id"])
+            if tier.event_id != event.id:
+                raise serializers.ValidationError("Tier does not belong to this event.")
+            item["tier"] = tier
+
+            wave_id = item.get("wave_id")
+            if wave_id is not None:
+                wave = get_object_or_404(Wave, pk=wave_id)
+                if wave.tier_id != tier.id:
+                    raise serializers.ValidationError("Wave does not belong to this tier.")
+                item["wave"] = wave
+            else:
+                item["wave"] = None
+
+            table_id = item.get("table_id")
+            if table_id is not None:
+                table = get_object_or_404(Table, pk=table_id)
+                if table.tier_id != tier.id:
+                    raise serializers.ValidationError("Table does not belong to this tier.")
+                item["table"] = table
+            else:
+                item["table"] = None
+
+            for addon in item.get("add_ons", []):
+                add_on = get_object_or_404(AddOn, pk=addon["add_on_id"])
+                if add_on.tier_id != tier.id:
+                    raise serializers.ValidationError("Add-on does not belong to this tier.")
+                addon["add_on"] = add_on
+
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """
+        Create Order, OrderItems, Add-ons and Tickets in one go.
+
+        For now, we mark the order as PAID (no PSP integration).
+        """
+        request = self.context["request"]
+        user = request.user
+        event = validated_data["event"]
+        items_data = validated_data["items"]
+
+        order = Order.objects.create(
+            user=user,
+            event=event,
+            status=OrderStatus.PAID,  # or PENDING if you integrate payments
+            currency="EUR",
+        )
+
+        subtotal = Decimal("0.00")
+
+        for item_data in items_data:
+            tier = item_data["tier"]
+            wave = item_data["wave"]
+            table = item_data["table"]
+            quantity = item_data["quantity"]
+
+            # base price from wave (or 0 fallback)
+            unit_price = wave.price if wave is not None else Decimal("0.00")
+            total_price = unit_price * quantity
+            subtotal += total_price
+
+            order_item = OrderItem.objects.create(
+                order=order,
+                tier=tier,
+                wave=wave,
+                table=table,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_price=total_price,
+            )
+
+            # Add-ons at order_item level
+            for addon_data in item_data.get("add_ons", []):
+                add_on = addon_data["add_on"]
+                addon_qty = addon_data["quantity"]
+
+                addon_unit_price = add_on.price
+                addon_total_price = addon_unit_price * addon_qty
+                subtotal += addon_total_price
+
+                OrderItemAddOn.objects.create(
+                    order_item=order_item,
+                    add_on=add_on,
+                    quantity=addon_qty,
+                    unit_price=addon_unit_price,
+                    total_price=addon_total_price,
+                )
+
+            # Create tickets (one per quantity)
+            for _ in range(quantity):
+                Ticket.objects.create(
+                    order_item=order_item,
+                    user=user,
+                    event=event,
+                    tier=tier,
+                    wave=wave,
+                    table=table,
+                    ticket_code=uuid4().hex,
+                )
+
+        # simple fee example: 0 for now
+        order.subtotal = subtotal
+        order.fees = Decimal("0.00")
+        order.total = subtotal
+        order.save(update_fields=["subtotal", "fees", "total"])
+
+        return order

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
 import secrets
 
 # ----------------------------
@@ -124,3 +125,4 @@ class User(AbstractUser):
         self.email_verification_token_created = None
         self.save(update_fields=['email_verified', 'email_verification_token', 'email_verification_token_created'])
         return True
+

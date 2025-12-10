@@ -14,12 +14,21 @@ from .views import (
     AddOnViewSet,
     TableViewSet,
     PostViewSet,
+
+    # 👇 guest-facing ticket views
+    MyTicketViewSet,
+    BuyTicketsView,
 )
 
 # Create main router and register top-level viewsets
 router = DefaultRouter()
 router.register(r'events', EventViewSet, basename='event')
 router.register(r'media', EventMediaViewSet, basename='eventmedia')
+
+# 👇 register guest ticket endpoints on main router
+# /api/guest/tickets/         -> list tickets for current user
+# /api/guest/tickets/{id}/    -> ticket detail (current user only)
+router.register(r'guest/tickets', MyTicketViewSet, basename='guest-tickets')
 
 # Create nested router for tiers and posts under events
 # /api/events/{event_pk}/tiers/
@@ -42,7 +51,12 @@ urlpatterns = [
     path('', include(router.urls)),
     path('', include(events_router.urls)),
     path('', include(tiers_router.urls)),
+
+    # 👇 guest ticket purchase endpoint
+    # POST /api/guest/tickets/buy/
+    path('guest/tickets/buy/', BuyTicketsView.as_view(), name='guest-ticket-buy'),
 ]
+
 
 """
 This creates the following endpoints:

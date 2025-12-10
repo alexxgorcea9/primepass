@@ -19,15 +19,22 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings.production')
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-from apps.notifications.routing import websocket_urlpatterns
-
-application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(
-        AuthMiddlewareStack(
-            URLRouter(
-                websocket_urlpatterns
+# Try to import websocket routing if notifications app exists
+try:
+    from apps.notifications.routing import websocket_urlpatterns
+    
+    application = ProtocolTypeRouter({
+        "http": django_asgi_app,
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(
+                URLRouter(
+                    websocket_urlpatterns
+                )
             )
-        )
-    ),
-})
+        ),
+    })
+except ImportError:
+    # Notifications app not yet created - use HTTP only
+    application = ProtocolTypeRouter({
+        "http": django_asgi_app,
+    })

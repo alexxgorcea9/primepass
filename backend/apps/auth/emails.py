@@ -26,7 +26,7 @@ def send_verification_email(user, verification_token):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://localhost:3000')
         verification_url = f"{frontend_url}/verify-email?token={verification_token}&email={user.email}"
         
         subject = "Verify your PrimePass email address"
@@ -97,6 +97,11 @@ def send_verification_email(user, verification_token):
         - The PrimePass Team
         """
         
+        logger.info(f"\n{'='*80}")
+        logger.info(f"SENDING VERIFICATION EMAIL TO: {user.email}")
+        logger.info(f"Verification URL: {verification_url}")
+        logger.info(f"{'='*80}\n")
+        
         send_mail(
             subject=subject,
             message=plain_message,
@@ -106,7 +111,7 @@ def send_verification_email(user, verification_token):
             fail_silently=False,
         )
         
-        logger.info(f"Verification email sent to {user.email}")
+        logger.info(f"✅ Verification email sent successfully to {user.email}")
         return True
         
     except Exception as e:

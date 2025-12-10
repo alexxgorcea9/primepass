@@ -2,7 +2,7 @@
 Views for Events app with Redis caching integration.
 """
 import logging
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions,generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -11,7 +11,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
 
-from apps.events.models import EventMedia, Tier, Wave, Privilege, AddOn, Table, Event, Post
+from apps.events.models import EventMedia, Tier, Wave, Privilege, AddOn, Table, Event, Post, Ticket, Order
 from apps.events.serializers import (
     EventListSerializer,
     EventDetailSerializer,
@@ -31,6 +31,9 @@ from apps.events.serializers import (
     TableCreateUpdateSerializer,
     BulkEventCreateSerializer, PostCreateUpdateSerializer, PostSerializer,
     JoinTeamSerializer, TeamMemberSerializer,
+    TicketListSerializer,
+    TicketDetailSerializer,
+    BuyTicketsSerializer
 )
 from apps.events.cache.service import CacheService, EventCacheService, TierCacheService
 from apps.events.cache.keys import (
@@ -1331,3 +1334,61 @@ class PostViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+### GUEST VIEWS
+class IsGuestUser(permissions.BasePermission):
+    """
+    Optional: if you want to restrict to users with role='guest'.
+    If not needed, you can just use IsAuthenticated.
+    """
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and getattr(request.user, "role", None) == "guest"
+        )
+
+class MyTicketViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    - GET /api/guest/tickets/       -> list tickets for current user
+    - GET /api/guest/tickets/<id>/  -> ticket detail (if belongs to user)
+    """
+    permission_classes = [permissions.IsAuthenticated]  # or [IsGuestUser]
+
+    def get_queryset(self):
+        return (
+            Ticket.objects
+            .select_related("event", "tier", "wave", "table")
+            .filter(user=self.request.user)
+            .order_by("-created_at")
+        )
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return TicketDetailSerializer
+        return TicketListSerializer
+
+
+class BuyTicketsView(generics.GenericAPIView):
+    """
+    POST /api/guest/tickets/buy/
+    Body: BuyTicketsSerializer payload
+    """
+    permission_classes = [permissions.IsAuthenticated]  # or [IsGuestUser]
+    serializer_class = BuyTicketsSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+
+        #return full order, or just tickets, or a simple confirmation
+        return Response(
+            {
+                "order_id": order.id,
+                "event_id": order.event_id,
+                "total": str(order.total),
+            },
+            status=status.HTTP_201_CREATED,
+        )

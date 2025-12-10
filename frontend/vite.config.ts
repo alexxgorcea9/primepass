@@ -42,7 +42,7 @@ export default defineConfig({
     // HMR configuration for local network access
     hmr: {
       // Always use the network IP so HMR works from any device on the network
-      host: '192.168.100.133',
+      host: '192.168.178.47',
       clientPort: 3000,
       protocol: 'wss',  // Changed to wss for secure WebSocket
       timeout: 30000,
@@ -50,13 +50,13 @@ export default defineConfig({
 
     proxy: {
       '/api': {
-        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.100.133:8000',
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.178.47:8000',
         changeOrigin: true,
         secure: false,
         ws: true,  // Enable WebSocket proxying
       },
       '/media': {
-        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.100.133:8000',
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://192.168.178.47:8000',
         changeOrigin: true,
         secure: false,
       },
