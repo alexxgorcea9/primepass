@@ -93,7 +93,7 @@ interface AuthProviderProps {
 }
 
 // Create an axios instance with proper configuration
-const axiosInstance = axios.create({
+export const axiosInstance = axios.create({
   baseURL: '', // Use relative URLs to work with your dev proxy
   withCredentials: true, // Important: send cookies with requests
   xsrfCookieName: 'csrftoken', // Django default

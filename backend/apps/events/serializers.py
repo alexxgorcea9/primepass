@@ -693,61 +693,138 @@ class JoinTeamSerializer(serializers.Serializer):
         return event
 
 ### TICKET VIEWS
-class TicketListSerializer(serializers.ModelSerializer):
-    event_title = serializers.CharField(source="event.title", read_only=True)
-    event_date = serializers.DateField(source="event.date", read_only=True)
-    event_time = serializers.TimeField(source="event.time", read_only=True)
-    event_location = serializers.CharField(source="event.location", read_only=True)
+class TicketAddOnSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source="add_on.id", read_only=True)
+    title = serializers.CharField(source="add_on.name", read_only=True)
+    description = serializers.CharField(
+        source="add_on.description", allow_null=True, read_only=True
+    )
+    # use the snapshot price stored on TicketAddOn
+    price = serializers.DecimalField(
+        source="unit_price", max_digits=10, decimal_places=2, read_only=True
+    )
 
-    tier_name = serializers.CharField(source="tier.name", read_only=True)
+    class Meta:
+        model = TicketAddOn
+        fields = ["id", "title", "description", "price"]
+
+class TicketListSerializer(serializers.ModelSerializer):
+    # Expose camelCase for frontend
+    ticketCode = serializers.CharField(source="ticket_code", read_only=True)
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+
+    # Event fields
+    eventTitle = serializers.CharField(source="event.title", read_only=True)
+    eventShortDescription = serializers.CharField(
+        source="event.short_description", read_only=True, allow_null=True
+    )
+    eventLocation = serializers.CharField(source="event.location", read_only=True)
+    eventDate = serializers.DateField(source="event.date", read_only=True)
+    eventTime = serializers.TimeField(source="event.time", read_only=True)
+    heroImageUrl = serializers.SerializerMethodField()
+
+    # Organizer fields
+    organizerName = serializers.CharField(
+        source="event.organizer.name", read_only=True
+    )
+    organizerProfilePicture = serializers.SerializerMethodField()
+
+    # Tier fields
+    tierName = serializers.CharField(source="tier.name", read_only=True)
+    perks = serializers.SerializerMethodField()
+
+    # Add-ons (only "available" for now, per Tier)
+    availableAddOns = serializers.SerializerMethodField()
+    purchasedAddOns = serializers.SerializerMethodField()
+
+    ownerEmail = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = Ticket
         fields = [
             "id",
-            "ticket_code",
+            "ticketCode",
             "status",
+            "createdAt",
+
+            #user
+            "ownerEmail",
+
+            # event
             "event",
-            "event_title",
-            "event_date",
-            "event_time",
-            "event_location",
+            "eventTitle",
+            "eventShortDescription",
+            "eventLocation",
+            "eventDate",
+            "eventTime",
+            "heroImageUrl",
+
+            # organizer
+            "organizerName",
+            "organizerProfilePicture",
+
+            # tier
             "tier",
-            "tier_name",
-            "created_at",
+            "tierName",
+            "perks",
+
+            # add-ons
+            "availableAddOns",
+            "purchasedAddOns",
+        ]
+
+    def get_purchasedAddOns(self, obj: Ticket):
+        # use prefetch_related('ticket_add_ons__add_on') in the view for perf if needed
+        add_ons = obj.ticket_add_ons.select_related("add_on").all()
+        return TicketAddOnSerializer(add_ons, many=True).data
+
+    def get_heroImageUrl(self, obj):
+        hero = getattr(obj.event, "hero_image", None)
+        return hero.url if hero else ""
+
+    def get_organizerProfilePicture(self, obj):
+        organizer = obj.event.organizer
+        pic = getattr(organizer, "profile_picture", None)
+        return pic.url if pic else ""
+
+    def get_perks(self, obj):
+        # Tier → Privileges
+        privileges = obj.tier.privileges.all()
+        return [
+            {
+                "id": p.id,
+                "title": p.title,
+                "description": p.description,
+            }
+            for p in privileges
+        ]
+
+    def get_availableAddOns(self, obj):
+        # Tier → AddOns
+        addons = obj.tier.add_ons.all()
+        return [
+            {
+                "id": a.id,
+                "title": a.name,
+                "description": a.description,
+                "price": a.price,
+            }
+            for a in addons
         ]
 
 
-class TicketDetailSerializer(serializers.ModelSerializer):
-    event_title = serializers.CharField(source="event.title", read_only=True)
-    event_date = serializers.DateField(source="event.date", read_only=True)
-    event_time = serializers.TimeField(source="event.time", read_only=True)
-    event_location = serializers.CharField(source="event.location", read_only=True)
 
-    tier_name = serializers.CharField(source="tier.name", read_only=True)
+class TicketDetailSerializer(TicketListSerializer):
     wave_name = serializers.SerializerMethodField()
     table_name = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Ticket
-        fields = [
-            "id",
-            "ticket_code",
-            "status",
-            "holder_name",
-            "event",
-            "event_title",
-            "event_date",
-            "event_time",
-            "event_location",
-            "tier",
-            "tier_name",
+    class Meta(TicketListSerializer.Meta):
+        fields = TicketListSerializer.Meta.fields + [
             "wave",
             "wave_name",
             "table",
             "table_name",
             "checked_in_at",
-            "created_at",
         ]
 
     def get_wave_name(self, obj):
@@ -755,6 +832,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
 
     def get_table_name(self, obj):
         return getattr(obj.table, "table_name", None)
+
 
 
 # ================================================
