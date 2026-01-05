@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import CreateEventHeader from '@components/Organizer/CreateEvent/CreateEventHeader';
+import Header from '@components/Organizer/CreateEvent/Header';
 import CreateEventTabs from '@components/Organizer/CreateEvent/CreateEventTabs';
 import TextInputLine from '@components/Organizer/CreateEvent/Details/TextInputLine';
 import DateTimePicker from '@components/Organizer/CreateEvent/Details/DateTimePicker';
@@ -327,7 +327,7 @@ const CreateEvent = () => {
       
       {/* Fixed Header at top */}
       <div className="fixed top-0 left-0 right-0 z-50 p-4">
-        <CreateEventHeader />
+        <Header />
       </div>
 
       <GradualBlur
