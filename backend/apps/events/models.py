@@ -386,13 +386,17 @@ class Ticket(models.Model):
         OrderItem,
         on_delete=models.PROTECT,
         related_name="tickets",
-        help_text="Order item that created this ticket.",
+        blank=True,
+        null=True,
+        help_text="Order item that purchased this ticket. Null for unclaimed tickets.",
     )
     user = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
         related_name="tickets",
         db_column="userID",
+        blank=True,
+        null=True,
     )
     event = models.ForeignKey(
         Event,
@@ -446,6 +450,18 @@ class Ticket(models.Model):
         blank=True,
         null=True,
         help_text="Name printed on the ticket (optional, can differ from account name).",
+    )
+
+    is_claimed = models.BooleanField(
+        default=False,
+        help_text="Whether this pre-generated ticket has been purchased/claimed.",
+    )
+
+    qr_code_image = models.ImageField(
+        upload_to='ticket_qr_codes/',
+        blank=True,
+        null=True,
+        help_text="Generated QR code image for this ticket.",
     )
 
     checked_in_at = models.DateTimeField(blank=True, null=True)

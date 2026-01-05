@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import uuid4
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post,Order, OrderItem, OrderItemAddOn, Ticket, TicketAddOn,OrderStatus
+from .models import Tier, EventMedia, Event, Wave, Privilege, AddOn, Table, Post,Order, OrderItem, OrderItemAddOn, Ticket, TicketAddOn, OrderStatus, TicketStatus
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -593,13 +593,38 @@ class BulkEventCreateSerializer(serializers.Serializer):
                 tier = Tier.objects.create(**tier_create_data)
 
                 # 3. Create waves for this tier
+                created_waves = []
                 for wave_data in waves_data:
-                    Wave.objects.create(
+                    wave = Wave.objects.create(
                         tier=tier,
                         name=wave_data.get('name', ''),
                         ticket_count=wave_data.get('ticketCount', 0),
                         price=wave_data.get('price', 0)
                     )
+                    created_waves.append(wave)
+
+                # 3.5 Pre-generate tickets for each wave
+                from .utils import generate_unique_ticket_code, generate_qr_code_image
+                
+                for wave in created_waves:
+                    for _ in range(wave.ticket_count):
+                        ticket_code = generate_unique_ticket_code()
+                        qr_image = generate_qr_code_image(ticket_code)
+                        
+                        Ticket.objects.create(
+                            order_item=None,
+                            user=None,
+                            event=event,
+                            tier=tier,
+                            wave=wave,
+                            table=None,
+                            ticket_code=ticket_code,
+                            qr_code_image=qr_image,
+                            is_claimed=False,
+                            status=TicketStatus.VALID
+                        )
+                    
+                    logger.info(f"Pre-generated {wave.ticket_count} tickets for wave {wave.id} ({wave.name})")
 
                 # 4. Create privileges for this tier
                 for privilege_data in privileges_data:
@@ -737,7 +762,10 @@ class TicketListSerializer(serializers.ModelSerializer):
     availableAddOns = serializers.SerializerMethodField()
     purchasedAddOns = serializers.SerializerMethodField()
 
-    ownerEmail = serializers.EmailField(source="user.email", read_only=True)
+    ownerEmail = serializers.EmailField(source="user.email", read_only=True, allow_null=True)
+    
+    # QR code
+    qrCodeUrl = serializers.SerializerMethodField()
 
     class Meta:
         model = Ticket
@@ -771,6 +799,7 @@ class TicketListSerializer(serializers.ModelSerializer):
             # add-ons
             "availableAddOns",
             "purchasedAddOns",
+            "qrCodeUrl",
         ]
 
     def get_purchasedAddOns(self, obj: Ticket):
@@ -811,6 +840,12 @@ class TicketListSerializer(serializers.ModelSerializer):
             }
             for a in addons
         ]
+    
+    def get_qrCodeUrl(self, obj):
+        """Return QR code image URL"""
+        if obj.qr_code_image:
+            return obj.qr_code_image.url
+        return None
 
 
 
@@ -975,17 +1010,32 @@ class BuyTicketsSerializer(serializers.Serializer):
                     total_price=addon_total_price,
                 )
 
-            # Create tickets (one per quantity)
-            for _ in range(quantity):
-                Ticket.objects.create(
-                    order_item=order_item,
-                    user=user,
-                    event=event,
-                    tier=tier,
-                    wave=wave,
-                    table=table,
-                    ticket_code=uuid4().hex,
+            # Claim pre-generated tickets
+            available_tickets = Ticket.objects.filter(
+                event=event,
+                tier=tier,
+                wave=wave,
+                is_claimed=False,
+                order_item__isnull=True,
+                user__isnull=True,
+                status=TicketStatus.VALID
+            ).order_by('created_at')[:quantity]
+
+            if available_tickets.count() < quantity:
+                raise serializers.ValidationError(
+                    f"Only {available_tickets.count()} tickets available for this wave. "
+                    f"Requested {quantity}."
                 )
+
+            # Claim the tickets by updating them
+            ticket_ids = list(available_tickets.values_list('id', flat=True))
+            Ticket.objects.filter(id__in=ticket_ids).update(
+                order_item=order_item,
+                user=user,
+                is_claimed=True
+            )
+            
+            logger.info(f"Claimed {quantity} tickets for order_item {order_item.id}")
 
         # simple fee example: 0 for now
         order.subtotal = subtotal
