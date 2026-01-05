@@ -1,193 +1,153 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import TicketCard from '../../components/Guest/Tickets/TicketCard';
-import ExpandedTicketCard from '../../components/Guest/Tickets/ExpandedTicketCard';
-import { useAuth } from '@/contexts/AuthContext';
-import { useMyTickets } from '@/hooks/useTickets';
-import type { Ticket as ApiTicket } from '@/api/tickets';
-import NotificationIcon from '../../assets/notifications.svg';
-import TicketIcon from '../../assets/ticket.svg';
-import defaultAvatar from '../../assets/image.png';
+import { useLocation } from 'react-router-dom';
+import XClose from '@/assets/xclose.svg';
+import Location from '@/assets/location.svg';
+import Calendar from '@/assets/calendar-black.svg';
+import Clock from '@/assets/clock.svg';
+import React from 'react';
+import { useEventTiers } from '@/hooks/useEvents';
+import type { Tier } from '@/api/events';
+import TierCard from '@/components/Guest/Events/TierCard';
+import { TIER_GRADIENTS } from '@/constants/tierGradients';
 
-const Tickets: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { data: tickets, isLoading: loading, error } = useMyTickets();
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
-  const [selectedTicketData, setSelectedTicketData] = useState<ApiTicket | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
-
-  if (loading) {
-    return <div className="text-white p-4">Loading your tickets...</div>;
+const formatTime = (timeString: string): string => {
+  if (/^\d{2}:\d{2}/.test(timeString)) {
+    return timeString.substring(0, 5);
   }
-
-  if (error) {
-    return <div className="text-white p-4">Error: Failed to load tickets</div>;
+  try {
+    const [hours, minutes] = timeString.split(':');
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  } catch {
+    return timeString;
   }
+};
 
-  if (!tickets || tickets.length === 0) {
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+interface TicketsLocationState {
+  eventId: number;
+  eventName: string;
+  location: string;
+  date: string;
+  time: string;
+  heroImageUrl: string;
+  tiers?: Tier[];
+}
+
+const Tickets = () => {
+  const location = useLocation();
+  const eventData = location.state as TicketsLocationState | null;
+  
+  const shouldFetch = !eventData?.tiers && !!eventData?.eventId;
+  const { data: fetchedTiers, isLoading: loading, error } = useEventTiers(
+    eventData?.eventId || 0,
+    shouldFetch
+  );
+
+  const tiers = eventData?.tiers || fetchedTiers || [];
+
+  const getColorFromGradient = (gradientId: string): string => {
+    const gradient = TIER_GRADIENTS.find(g => g.id === gradientId);
+    return gradient?.from || '#A8FF78';
+  };
+
+  const getGradientClassName = (gradientId: string): string => {
+    const gradient = TIER_GRADIENTS.find(g => g.id === gradientId);
+    return gradient?.className || 'from-[#A8FF78] to-[#78FFD6]';
+  };
+
+  const getLowestPrice = (waves: Tier['waves']): number | undefined => {
+    if (!waves || waves.length === 0) return undefined;
+    const prices = waves.map(w => parseFloat(w.price));
+    return Math.min(...prices);
+  };
+
+  if (!eventData) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-white p-5">
-        <p>No tickets found.</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-400">No event data available</p>
       </div>
     );
   }
 
-  const getUserProfilePicture = () => {
-    if (user?.profile_picture && user.profile_picture !== '') {
-      return user.profile_picture;
-    }
-    return defaultAvatar;
-  };
-
-  const handleTicketClick = (ticket: ApiTicket) => {
-    setSelectedTicketId(ticket.id);
-    setSelectedTicketData(ticket);
-  };
-
-  const handleCloseExpanded = () => {
-    setSelectedTicketId(null);
-    setSelectedTicketData(null);
-  };
-
   return (
-    <div className="w-full h-screen bg-[var(--BG)] overflow-hidden flex flex-col">
-      {/* HEADER – same in both states (no event title / X here anymore) */}
-      <motion.div className="w-full px-5 pt-5 flex items-center justify-between">
-        <div className="flex-1">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selectedTicketId ? 'tickets-title-expanded' : 'tickets-title'}
-              className="text-white text-left text-2xl font-normal font-['Lufga'] leading-loose z-10"
-              initial={{ y: 20, opacity: 0, filter: 'blur(10px)' }}
-              animate={{
-                y: 0,
-                opacity: 1,
-                filter: 'blur(0px)',
-                transition: {
-                  y: { type: 'spring', stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 },
-                  filter: { duration: 0.25 },
-                },
-              }}
-              exit={{
-                y: -20,
-                opacity: 0,
-                filter: 'blur(10px)',
-                transition: {
-                  y: { duration: 0.2 },
-                  opacity: { duration: 0.2 },
-                  filter: { duration: 0.15 },
-                },
-              }}
-            >
-              Tickets
-            </motion.div>
-          </AnimatePresence>
-        </div>
+    <div className="fixed inset-0">
+      <div className="w-full h-1/3 relative overflow-hidden">
+        <img
+          src={eventData.heroImageUrl}
+          alt="Event"
+          className="w-full h-full object-cover"
+        />
 
-        {/* Navigation icons */}
-        <motion.div className="ml-auto flex items-center gap-[5px]" layout>
-          <Link
-            to="/notifications"
-            className="flex w-12 h-12 p-2.5 justify-center items-center rounded-full bg-[rgba(247,247,247,0.05)]"
-          >
-            <img
-              src={NotificationIcon}
-              alt="Notifications"
-              className="w-4 h-4"
-            />
-          </Link>
+        <button
+          className="absolute top-4 left-4 w-[50px] z-50 h-[50px] bg-gradient-to-b from-[rgba(247,247,247,0.10)] to-[rgba(247,247,247,0.05)] overflow-hidden rounded-full outline-[1px] outline-[rgba(247,247,247,0.10)] outline-offset-[-0.5px] backdrop-blur-[20px] inline-flex items-center justify-center cursor-pointer"
+          onClick={() => window.history.back()}
+        >
+          <img src={XClose} alt="XClose" className="w-4 h-4" />
+        </button>
 
-          <Link
-            to="/tickets"
-            className="flex w-12 h-12 p-2.5 justify-center items-center rounded-full bg-[rgba(247,247,247,0.05)]"
-          >
-            <img src={TicketIcon} alt="Tickets" className="w-4 h-4" />
-          </Link>
-
-          <Link
-            to="/settings"
-            className="flex w-12 h-12 justify-center items-center rounded-full overflow-hidden bg-[#1A1A1A]"
-          >
-            <img
-              src={getUserProfilePicture()}
-              alt="Profile"
-              className="w-full h-full object-cover"
-              onError={(e) =>
-                ((e.target as HTMLImageElement).src = defaultAvatar)
-              }
-            />
-          </Link>
-        </motion.div>
-      </motion.div>
-
-      {/* Main content */}
-      {selectedTicketId && selectedTicketData ? (
-        // Expanded view stays full area
-        <div className="flex-1 w-full overflow-hidden transition-all duration-300 ease-in-out relative z-20">
-          <ExpandedTicketCard
-            ticket={selectedTicketData}
-            onClose={handleCloseExpanded}
-          />
-        </div>
-      ) : (
-        // Normal tickets list – center the card
-        <div className="flex-1 w-full flex flex-col items-center mt-6">
-          <div className="w-full max-w-md mx-auto px-5 pb-10 pt-4">
-            <motion.div
-              className="w-full flex flex-col items-center gap-5 overflow-y-auto max-h-[calc(100vh-170px)] pb-10 scrollbar-hide"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
-            >
-              {tickets.map((ticket) => {
-                const eventDate = ticket.eventDate;
-                const eventTime = ticket.eventTime;
-
-                return (
-                  <motion.div
-                    key={ticket.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      scale: 1,
-                      transition: { duration: 0.25 },
-                    }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="w-full flex justify-center"
-                  >
-                    <TicketCard
-                      ticketId={ticket.id}
-                      eventId={ticket.event}
-                      eventTitle={ticket.eventTitle}
-                      eventLocation={ticket.eventLocation}
-                      eventDate={eventDate}
-                      eventTime={eventTime}
-                      countdownDate={eventDate}
-                      countdownTime={eventTime}
-                      ticketType={ticket.tierName}
-                      uniqueCode={ticket.ticketCode}
-                      heroImageUrl={ticket.heroImageUrl}
-                      eventShortDescription={ticket.eventShortDescription ?? ''}
-                      organizerImageUrl={ticket.organizerProfilePicture}
-                      perks={ticket.perks?.map((p) => p.title) ?? []}
-                      onExpand={() => handleTicketClick(ticket)}
-                    />
-                  </motion.div>
-                );
-              })}
-            </motion.div>
+        <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2">
+          <div className="flex items-center justify-center py-2.5 px-5 bg-[rgba(247,247,247,0.5)] backdrop-blur-[40px] rounded-full gap-2 w-fit whitespace-nowrap">
+            <img src={Location} alt="Location" className="w-3 h-3" />
+            <span className="text-sm text-BG">{eventData.location}</span>
+          </div>
+          <div className="flex items-center justify-center py-2.5 px-5 bg-[rgba(247,247,247,0.5)] backdrop-blur-[40px] rounded-full gap-2 w-fit whitespace-nowrap">
+            <img src={Calendar} alt="Calendar" className="w-3 h-3" />
+            <span className="text-sm text-BG">{formatDate(eventData.date)}</span>
+          </div>
+          <div className="flex items-center justify-center py-2.5 px-5 bg-[rgba(247,247,247,0.5)] backdrop-blur-[40px] rounded-full gap-2 w-fit whitespace-nowrap">
+            <img src={Clock} alt="Clock" className="w-3 h-3" />
+            <span className="text-sm text-BG">{formatTime(eventData.time)}</span>
           </div>
         </div>
-      )}
+
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#0A0A0A] to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0A0A0A] to-transparent pointer-events-none" />
+      </div>
+
+      <div className="flex-1 overflow-auto px-[10px] py-6">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-gray-400">Loading tickets...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-red-400">Failed to load ticket tiers</p>
+          </div>
+        )}
+
+        {!loading && !error && tiers.length === 0 && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-gray-400">No tickets available for this event</p>
+          </div>
+        )}
+
+        {!loading && !error && tiers.length > 0 && (
+          <div className="space-y-4">
+            {tiers.map((tier) => (
+              <TierCard
+                key={tier.id}
+                id={tier.id}
+                name={tier.name}
+                eventId={eventData.eventId}
+                eventName={eventData.eventName}
+                privileges={tier.privileges}
+                lowestAvailablePrice={getLowestPrice(tier.waves)}
+                color={getColorFromGradient(tier.gradient)}
+                icon={tier.icon}
+                gradientClassName={getGradientClassName(tier.gradient)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -366,7 +366,16 @@ function Item({ event, close, navigate }: { event: EventWithMedia; close: VoidFu
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                navigate(`/events/${event.id}/tickets`);
+                  navigate(`/events/${event.id}/tickets`, {
+                    state: {
+                      eventId: event.id,
+                      eventName: event.title,
+                      location: event.location,
+                      date: event.date,
+                      time: event.time,
+                      heroImageUrl: event.heroImageUrl,
+                    },
+                  });
                 }}
               >
                 <div className="text-white text-sm font-['Lufga'] leading-6 whitespace-nowrap">Tickets</div>

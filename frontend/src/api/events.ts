@@ -150,6 +150,17 @@ export const eventsApi = {
     }
   },
 
+  // Get all tiers for an event
+  getEventTiers: async (eventId: number): Promise<Tier[]> => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}/tiers/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching event tiers:', error);
+      throw error;
+    }
+  },
+
   // Upload media (image/video) to an event
   uploadMedia: async (eventId: number, file: File, mediaType: 'image' | 'video', isFeatured = false): Promise<EventMedia> => {
     try {
@@ -265,4 +276,54 @@ export interface EventMedia {
   file: string;
   isFeatured: boolean;
   uploadedAt: string;
+}
+
+// Tier interfaces matching backend TierDetailSerializer
+export interface Wave {
+  id: number;
+  name: string;
+  ticketCount: number;
+  price: string;
+}
+
+export interface Privilege {
+  id: number;
+  title: string;
+  description: string;
+}
+
+export interface AddOn {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  isUnlimited: boolean;
+  quantity: number;
+}
+
+export interface TierTable {
+  id: number;
+  tableName: string;
+  quantityAvailable: number;
+  numberOfSeats: number;
+  minSpend: string;
+  isReserved: boolean;
+  reservedBy: { id: number } | null;
+  reservedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Tier {
+  id: number;
+  name: string;
+  icon: string;
+  gradient: string;
+  hasSpecialRequests: boolean;
+  waves: Wave[];
+  privileges: Privilege[];
+  addOns: AddOn[];
+  tables: TierTable[];
+  createdAt: string;
+  updatedAt: string;
 }

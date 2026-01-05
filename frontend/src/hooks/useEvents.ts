@@ -1,5 +1,5 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { eventsApi, type Event, type PaginatedResponse, type EventMedia } from '@/api/events';
+import { eventsApi, type Event, type PaginatedResponse, type EventMedia, type Tier } from '@/api/events';
 
 // Query keys factory for better cache management
 export const eventKeys = {
@@ -9,6 +9,7 @@ export const eventKeys = {
   myEvents: () => [...eventKeys.all, 'my-events'] as const,
   detail: (eventId: number) => [...eventKeys.all, 'detail', eventId] as const,
   media: (eventId: number) => [...eventKeys.all, 'media', eventId] as const,
+  tiers: (eventId: number) => [...eventKeys.all, 'tiers', eventId] as const,
 };
 
 // Hook for upcoming events
@@ -83,5 +84,16 @@ export const useEventsMedia = (events: Event[] | undefined) => {
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 30,
     })),
+  });
+};
+
+// Hook for fetching event tiers
+export const useEventTiers = (eventId: number, enabled = true) => {
+  return useQuery<Tier[]>({
+    queryKey: eventKeys.tiers(eventId),
+    queryFn: () => eventsApi.getEventTiers(eventId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+    enabled, // Only fetch if enabled
   });
 };
