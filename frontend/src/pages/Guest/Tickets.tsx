@@ -6,7 +6,7 @@ import Clock from '@/assets/clock.svg';
 import React from 'react';
 import { useEventTiers } from '@/hooks/useEvents';
 import type { Tier } from '@/api/events';
-import TierCard from '@/components/Guest/Events/TierCard';
+import TierCard from '@/components/Guest/Tickets/TierCard';
 import { TIER_GRADIENTS } from '@/constants/tierGradients';
 
 const formatTime = (timeString: string): string => {
