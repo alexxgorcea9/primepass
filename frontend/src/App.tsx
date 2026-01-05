@@ -125,7 +125,7 @@ function App() {
             </Suspense>
           </AuthGuard>
         } />
-        <Route path='/tickets' element={
+        <Route path='/events/:event_id/tickets' element={
           <AuthGuard allowedRoles={['guest']}>
             <Suspense fallback={<PageLoader />}>
               <Tickets />

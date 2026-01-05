@@ -28,6 +28,9 @@ RUN npm install --only=production && npm cache clean --force
 # ==============================================================================
 FROM base as development
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Copy package files
 COPY frontend/package.json frontend/package-lock.json* ./
 
@@ -52,7 +55,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000 || exit 1
+    CMD curl -f -k https://localhost:3000 || exit 1
 
 # Start development server
 CMD ["npm", "run", "dev"]

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import TicketCard from '../../components/Guest/Tickets/TicketCard.tsx';
+import TicketCard from '../../components/Guest/Tickets/TicketCard';
 import ExpandedTicketCard from '../../components/Guest/Tickets/ExpandedTicketCard';
-import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMyTickets } from '@/hooks/useTickets';
 import type { Ticket as ApiTicket } from '@/api/tickets';
 import NotificationIcon from '../../assets/notifications.svg';
