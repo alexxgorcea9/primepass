@@ -12,131 +12,144 @@ interface PriceWave {
   remaining: number;
 }
 
-interface TierData {
-  name: string;
-  price: number;
-  type: 'special' | 'standard';
-}
-
-interface TierColors {
-  gradient: string;
-  background: string;
-  iconColor: string;
-}
-
-interface WaveChartProps {
+interface PricingChartProps {
   waves: PriceWave[];
   loading: boolean;
-  tierData: TierData;
-  tierColors: TierColors;
+  tierData: {
+    name: string;
+    price: number;
+    type: string;
+  };
+  tierColors: {
+    gradient: string;
+    background: string;
+    iconColor: string;
+  };
   activeWave: PriceWave | null;
   activeWaveIndex: number;
 }
 
-const WaveChart: React.FC<WaveChartProps> = ({
-  waves,
-  loading,
-  tierData,
-  tierColors,
-  activeWave,
-  activeWaveIndex,
-}) => {
+const WaveChart: React.FC<PricingChartProps> = ({
+                                                  waves,
+                                                  loading,
+                                                  tierData,
+                                                  tierColors,
+                                                  activeWave,
+                                                  activeWaveIndex,
+                                                }) => {
+  console.log('WaveChart DEBUG: Received props:', {
+    waves: waves.length,
+    loading,
+    tierData,
+    tierColors,
+    activeWave,
+    activeWaveIndex,
+  });
+
+  // Show loading state
   if (loading) {
     return (
       <motion.div
-        className="flex h-[280px] w-full items-center justify-center rounded-[20px] p-4"
-        style={{
-          background: `linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(247, 247, 247, 0.30) 100%)`,
-        }}
-        initial={{ opacity: 0, y: -20 }}
+        className='relative flex h-full w-full flex-col items-start gap-2 overflow-hidden rounded-[20px] p-4'
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="text-white">Loading wave data...</div>
+        <div className='flex h-full w-full items-center justify-center rounded-[20px] bg-[var(--BG-1)] p-5'>
+          <div className='flex h-full w-full animate-pulse flex-col items-center justify-center'>
+            <div className='bg-opacity-20 mb-2 h-4 w-1/2 rounded bg-gray-300'></div>
+            <div className='bg-opacity-20 mb-2 h-32 w-full rounded bg-gray-300'></div>
+            <div className='bg-opacity-20 h-4 w-1/3 rounded bg-gray-300'></div>
+          </div>
+        </div>
       </motion.div>
     );
   }
 
   return (
     <motion.div
-      className="flex h-[280px] w-full flex-col gap-4 rounded-[20px] p-4"
-      style={{
-        background: `linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(247, 247, 247, 0.30) 100%)`,
-      }}
-      initial={{ opacity: 0, y: -20 }}
+      className='relative flex h-full w-full flex-col items-start gap-2 overflow-hidden rounded-[20px] p-4'
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Tier Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-white">{tierData.name}</h1>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-white">
-              ${activeWave?.price.toFixed(2) || tierData.price.toFixed(2)}
-            </span>
-            {tierData.type === 'special' && (
-              <span className="text-sm text-white/70">Special Request</span>
-            )}
+      <div className='relative mb-1 flex w-full items-start justify-between self-stretch'>
+        <div className='inline-flex items-center gap-[10px] rounded-[40px] bg-[#0A0A0A]/40 px-[12px] py-[5px] backdrop-blur-sm'>
+          <div
+            className='relative self-stretch text-lg font-semibold text-white'
+            style={{ color: tierColors.iconColor }}
+            data-testid='tier-name-display'
+          >
+            {tierData.name}
           </div>
         </div>
-        {activeWave && (
-          <div className="text-right">
-            <div className="text-sm text-white/70">Remaining</div>
-            <div className="text-xl font-semibold text-white">
-              {activeWave.remaining}/{activeWave.ticket_count}
-            </div>
+
+        <div className='flex flex-col items-end'>
+          <div className='text-4xl font-bold whitespace-nowrap text-white'>
+            ${tierData.price}
           </div>
-        )}
+          <div className='text-xs whitespace-nowrap text-[#B4B8B3]'>
+            {activeWave?.name || ''}
+          </div>
+        </div>
       </div>
 
-      {/* Wave Chart */}
-      {waves.length > 0 ? (
-        <div className="flex flex-grow items-end justify-between gap-2 px-2">
-          {waves.map((wave, index) => (
-            <motion.div
-              key={wave.id}
-              className="relative flex flex-1 flex-col items-center gap-2"
-              initial={{ scaleY: 0, opacity: 0 }}
-              animate={{ scaleY: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+      <div className='flex w-full flex-grow items-end gap-[10px] pt-2'>
+        {waves.map((wave, index) => {
+          // Determine if this wave comes after the active wave
+          const isAfterActiveWave =
+            activeWaveIndex >= 0 && index > activeWaveIndex;
+
+          return (
+            <div
+              key={index}
+              className='flex flex-col items-center'
+              style={{
+                width: '60px',
+              }}
             >
-              {/* Wave bar */}
-              <div
-                className={`w-full rounded-t-lg transition-all duration-300 ${
-                  index === activeWaveIndex
-                    ? `bg-gradient-to-b ${tierColors.gradient}`
-                    : wave.sold
-                      ? 'bg-white/20'
-                      : 'bg-white/40'
-                }`}
-                style={{ height: `${wave.height}px` }}
-              >
-                {/* Active wave indicator */}
-                {index === activeWaveIndex && (
-                  <motion.div
-                    className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.5, type: 'spring' }}
-                  >
-                    <span className="text-xs font-semibold text-BG">
-                      ${wave.price.toFixed(2)}
-                    </span>
-                  </motion.div>
-                )}
+              <div className='relative mb-1 text-xs whitespace-nowrap text-[#B4B8B3]'>
+                ${wave.price}
               </div>
 
-              {/* Wave label */}
-              <span className="text-xs text-white/70">{wave.name}</span>
-            </motion.div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-grow items-center justify-center">
-          <p className="text-sm text-white/70">No waves available</p>
-        </div>
-      )}
+              <div className='relative flex h-fit flex-col items-center justify-end'>
+                <div className='relative'>
+                  <div
+                    className={`w-[60px] rounded-[40px]`}
+                    style={{
+                      height: `${wave.height}px`,
+                      backgroundColor:
+                        wave.sold || wave.remaining === 0
+                          ? 'var(--Grey)' // Grey for sold out waves
+                          : 'unset',
+                      backgroundImage: !(wave.sold || wave.remaining === 0)
+                        ? 'linear-gradient(to bottom, var(--Accent3), var(--Gold2))'
+                        : 'unset',
+                      opacity: isAfterActiveWave ? 0.5 : 1, // 50% opacity for waves after the active wave
+                    }}
+                  />
+
+                  <div className='absolute -bottom-[30px] left-0 z-10 flex h-[60px] w-[60px] items-center justify-center rounded-[40px] bg-[#f7f7f733] backdrop-blur-[20px]'>
+                    <div className='text-[10px] leading-4 whitespace-nowrap text-white'>
+                      {wave.name}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className='mt-8 text-center text-xs whitespace-nowrap text-[#B4B8B3]'>
+                {
+                  wave.sold
+                    ? 'Sold out'
+                    : wave.active
+                      ? `${wave.remaining} left` // Current wave shows remaining tickets
+                      : `${wave.ticket_count}x` // Upcoming waves show total tickets with 'x' suffix
+                }
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </motion.div>
   );
 };
