@@ -10,6 +10,7 @@ export const eventKeys = {
   detail: (eventId: number) => [...eventKeys.all, 'detail', eventId] as const,
   media: (eventId: number) => [...eventKeys.all, 'media', eventId] as const,
   tiers: (eventId: number) => [...eventKeys.all, 'tiers', eventId] as const,
+  tierDetail: (eventId: number, tierId: number) => [...eventKeys.all, 'tier-detail', eventId, tierId] as const,
 };
 
 // Hook for upcoming events
@@ -92,6 +93,17 @@ export const useEventTiers = (eventId: number, enabled = true) => {
   return useQuery<Tier[]>({
     queryKey: eventKeys.tiers(eventId),
     queryFn: () => eventsApi.getEventTiers(eventId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+    enabled, // Only fetch if enabled
+  });
+};
+
+// Hook for fetching tier detail with waves
+export const useTierDetail = (eventId: number, tierId: number, enabled = true) => {
+  return useQuery<Tier>({
+    queryKey: eventKeys.tierDetail(eventId, tierId),
+    queryFn: () => eventsApi.getTierDetail(eventId, tierId),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     enabled, // Only fetch if enabled

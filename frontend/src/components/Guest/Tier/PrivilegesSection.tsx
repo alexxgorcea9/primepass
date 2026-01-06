@@ -61,22 +61,6 @@ const PrivilegesSection = ({
     );
   }
 
-  if (privileges.length === 0) {
-    return (
-      <motion.div
-        className='flex h-full w-full items-center justify-center rounded-[20px] p-2.5'
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(217, 179, 226, 0.30) 0%, rgba(247, 247, 247, 0.30) 100%)',
-        }}
-      >
-        <div className='text-white'>
-          No privileges available for this tier
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       className='flex h-full w-full flex-col gap-2.5 rounded-[20px] p-2.5'
@@ -147,8 +131,8 @@ const PrivilegesSection = ({
               </motion.div>
             </>
           ) : (
-            <div className='flex h-full w-full items-center justify-center'>
-              <p className='text-sm text-white'>
+            <div className='flex h-full w-full items-center justify-center p-4'>
+              <p className='text-center text-sm text-grey'>
                 No privileges available for this tier
               </p>
             </div>

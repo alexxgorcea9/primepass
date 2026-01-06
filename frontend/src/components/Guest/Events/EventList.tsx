@@ -348,39 +348,6 @@ function Item({ event, close, navigate }: { event: EventWithMedia; close: VoidFu
           <motion.div className="content-container" layout>
             {/* Tickets button and gallery preview row */}
             <div style={{width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px'}}>
-              {/* Tickets button */}
-              <div 
-                style={{
-                  padding: '12px 24px',
-                  background: 'linear-gradient(180deg, rgba(247, 247, 247, 0.20) 0%, rgba(247, 247, 247, 0.30) 100%)',
-                  overflow: 'hidden',
-                  borderRadius: '120px',
-                  outline: '1px rgba(247, 247, 247, 0.30) solid',
-                  outlineOffset: '-0.50px',
-                  backdropFilter: 'blur(20px)',
-                  display: 'inline-flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '10px',
-                  cursor: 'pointer'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/events/${event.id}/tickets`, {
-                    state: {
-                      eventId: event.id,
-                      eventName: event.title,
-                      location: event.location,
-                      date: event.date,
-                      time: event.time,
-                      heroImageUrl: event.heroImageUrl,
-                    },
-                  });
-                }}
-              >
-                <div className="text-white text-sm font-['Lufga'] leading-6 whitespace-nowrap">Tickets</div>
-              </div>
-              
               {/* Gallery preview */}
               {event.media && event.media.length > 0 && (
                 <div style={{
@@ -431,6 +398,40 @@ function Item({ event, close, navigate }: { event: EventWithMedia; close: VoidFu
                   )}
                 </div>
               )}
+
+              {/* Tickets button */}
+              <div 
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(180deg, rgba(247, 247, 247, 0.20) 0%, rgba(247, 247, 247, 0.30) 100%)',
+                  overflow: 'hidden',
+                  borderRadius: '120px',
+                  outline: '1px rgba(247, 247, 247, 0.30) solid',
+                  outlineOffset: '-0.50px',
+                  backdropFilter: 'blur(20px)',
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/events/${event.id}/tickets`, {
+                    state: {
+                      eventId: event.id,
+                      eventName: event.title,
+                      location: event.location,
+                      date: event.date,
+                      time: event.time,
+                      heroImageUrl: event.heroImageUrl,
+                    },
+                  });
+                }}
+              >
+                <div className="text-white text-sm font-['Lufga'] leading-6 whitespace-nowrap">Tickets</div>
+              </div>
+
             </div>
             
             <motion.h1 

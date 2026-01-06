@@ -161,6 +161,17 @@ export const eventsApi = {
     }
   },
 
+  // Get single tier detail with waves, privileges, etc.
+  getTierDetail: async (eventId: number, tierId: number): Promise<Tier> => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}/tiers/${tierId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tier detail:', error);
+      throw error;
+    }
+  },
+
   // Upload media (image/video) to an event
   uploadMedia: async (eventId: number, file: File, mediaType: 'image' | 'video', isFeatured = false): Promise<EventMedia> => {
     try {

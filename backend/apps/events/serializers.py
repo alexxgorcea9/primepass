@@ -354,10 +354,12 @@ class TierListSerializer(serializers.ModelSerializer):
     hasSpecialRequests = serializers.BooleanField(source='has_special_requests')
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    waves = WaveSerializer(source='price_waves', many=True, read_only=True)
+    privileges = PrivilegeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Tier
-        fields = ['id', 'name', 'icon', 'gradient', 'hasSpecialRequests', 'createdAt', 'updatedAt']
+        fields = ['id', 'name', 'icon', 'gradient', 'hasSpecialRequests', 'waves', 'privileges', 'createdAt', 'updatedAt']
         read_only_fields = ['id', 'createdAt', 'updatedAt']
 
 

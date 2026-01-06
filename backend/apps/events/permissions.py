@@ -52,17 +52,26 @@ class IsEventOrganizer(permissions.BasePermission):
     """
     Permission to check if user is the organizer of the event.
     Used for tier-related models (Tier, Wave, Privilege, AddOn, Table).
+    Allows read-only access to authenticated users, write access only to organizers.
     """
 
     def has_permission(self, request, view):
-        """Check if user is authenticated"""
+        """Allow authenticated users to read, but require organizer for write"""
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         """
-        Check if user is the organizer of the event.
+        Allow read access to authenticated users.
+        Check if user is the organizer for write operations.
         Works for models with 'event' or 'tier.event' relationship.
         """
+        # Read permissions for all authenticated users
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Write permissions only for event organizer
         # For Tier model (has direct event relationship)
         if hasattr(obj, 'event'):
             return obj.event.organizer == request.user

@@ -1,10 +1,11 @@
 import Header from "../../components/Organizer/CreateEvent/Header";
 import PrivilegesSection from "../../components/Guest/Tier/PrivilegesSection";
 import WaveChart from "../../components/Guest/Tier/WaveChart";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { eventsApi, Tier as TierType, Wave } from '@/api/events';
+import { Wave } from '@/api/events';
 import { TIER_GRADIENTS } from '@/constants/tierGradients';
+import { useTierDetail } from '@/hooks/useEvents';
 
 interface TierLocationState {
   id: string | number;
@@ -33,40 +34,19 @@ const Tier = () => {
   const location = useLocation();
   const tierData = location.state as TierLocationState | null;
   const [quantity, setQuantity] = useState(1);
-  const [tierDetails, setTierDetails] = useState<TierType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [waveData, setWaveData] = useState<PriceWave[]>([]);
 
-  // Fetch tier details with waves
-  useEffect(() => {
-    const fetchTierDetails = async () => {
-      if (!tierData?.eventId || !tierData?.id) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const details = await eventsApi.getTierDetail(
-          Number(tierData.eventId),
-          Number(tierData.id)
-        );
-        setTierDetails(details);
-
-        // Transform waves data for the chart
-        if (details.waves && details.waves.length > 0) {
-          const transformedWaves = transformWavesForChart(details.waves);
-          setWaveData(transformedWaves);
-        }
-      } catch (error) {
-        console.error('Error fetching tier details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTierDetails();
-  }, [tierData?.eventId, tierData?.id]);
+  // Fetch tier details with waves using TanStack Query
+  const {
+    data: tierDetails,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useTierDetail(
+    Number(tierData?.eventId || 0),
+    Number(tierData?.id || 0),
+    !!(tierData?.eventId && tierData?.id) // Only fetch if both IDs exist
+  );
 
   // Transform backend Wave data to WaveChart PriceWave format
   const transformWavesForChart = (waves: Wave[]): PriceWave[] => {
@@ -90,6 +70,14 @@ const Tier = () => {
       };
     });
   };
+
+  // Transform waves data for the chart
+  const waveData = useMemo(() => {
+    if (!tierDetails?.waves || tierDetails.waves.length === 0) {
+      return [];
+    }
+    return transformWavesForChart(tierDetails.waves);
+  }, [tierDetails?.waves]);
 
   // Calculate active wave and index
   const activeWaveIndex = waveData.findIndex(
@@ -120,16 +108,41 @@ const Tier = () => {
     console.log('Checkout clicked with quantity:', quantity);
   };
 
+  // Show error state with retry option
+  if (isError) {
+    return (
+      <div className="flex flex-col h-screen bg-BG">
+        <div className="flex-shrink-0 p-4">
+          <Header title={tierData?.eventName || 'Event'} />
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+          <div className="text-white text-center">
+            <h2 className="text-xl font-semibold mb-2">Failed to load tier details</h2>
+            <p className="text-grey text-sm mb-4">{error?.message || 'Something went wrong'}</p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="px-6 py-3 bg-white text-BG rounded-full font-semibold hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 h-screen overflow-hidden bg-BG">
-      <div className="fixed top-0 left-0 right-0 z-50 p-4">
+    <div className="flex flex-col h-screen bg-BG">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4">
         <Header title={tierData?.eventName || 'Event'} />
       </div>
 
-      <div className="fixed top-16 left-0 right-0 z-40 p-4">
+      {/* WaveChart - height fits content */}
+      <div className="flex-shrink-0">
         <WaveChart
           waves={waveData}
-          loading={loading}
+          loading={isLoading}
           tierData={{
             name: tierData?.name || 'Tier',
             price: activeWave?.price || tierData?.lowestAvailablePrice || 0,
@@ -141,10 +154,11 @@ const Tier = () => {
         />
       </div>
 
-      <div className="fixed top-[340px] left-0 right-0 z-30 p-4">
+      {/* PrivilegesSection - fills remaining space */}
+      <div className="flex-1 min-h-0 p-2.5 overflow-y-auto">
         <PrivilegesSection
           privileges={tierDetails?.privileges || tierData?.privileges || []}
-          loading={loading}
+          loading={isLoading}
           quantity={quantity}
           onQuantityChange={handleQuantityChange}
           onCheckout={handleCheckout}

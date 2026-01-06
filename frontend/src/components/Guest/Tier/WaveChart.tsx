@@ -55,7 +55,7 @@ const WaveChart: React.FC<PricingChartProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className='flex h-full w-full items-center justify-center rounded-[20px] bg-[var(--BG-1)] p-5'>
+        <div className='flex h-full w-full items-center justify-center rounded-[20px] bg-BG-1 p-5'>
           <div className='flex h-full w-full animate-pulse flex-col items-center justify-center'>
             <div className='bg-opacity-20 mb-2 h-4 w-1/2 rounded bg-gray-300'></div>
             <div className='bg-opacity-20 mb-2 h-32 w-full rounded bg-gray-300'></div>
@@ -68,7 +68,8 @@ const WaveChart: React.FC<PricingChartProps> = ({
 
   return (
     <motion.div
-      className='relative flex h-full w-full flex-col items-start gap-2 overflow-hidden rounded-[20px] p-4'
+      className='relative flex h-full w-full flex-col items-start gap-2 rounded-[20px] p-4'
+      style={{ minHeight: '200px' }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -94,7 +95,7 @@ const WaveChart: React.FC<PricingChartProps> = ({
         </div>
       </div>
 
-      <div className='flex w-full flex-grow items-end gap-[10px] pt-2'>
+      <div className='flex w-full flex-grow items-end gap-[10px] p-2.5' style={{ minHeight: '250px' }}>
         {waves.map((wave, index) => {
           // Determine if this wave comes after the active wave
           const isAfterActiveWave =
@@ -115,17 +116,16 @@ const WaveChart: React.FC<PricingChartProps> = ({
               <div className='relative flex h-fit flex-col items-center justify-end'>
                 <div className='relative'>
                   <div
-                    className={`w-[60px] rounded-[40px]`}
+                    className={`w-[60px] rounded-[40px] bg-gradient-to-b ${index === activeWaveIndex ? tierColors.gradient : ''}`}
                     style={{
                       height: `${wave.height}px`,
                       backgroundColor:
                         wave.sold || wave.remaining === 0
-                          ? 'var(--Grey)' // Grey for sold out waves
-                          : 'unset',
-                      backgroundImage: !(wave.sold || wave.remaining === 0)
-                        ? 'linear-gradient(to bottom, var(--Accent3), var(--Gold2))'
-                        : 'unset',
-                      opacity: isAfterActiveWave ? 0.5 : 1, // 50% opacity for waves after the active wave
+                          ? '#B4B8B3'
+                          : index === activeWaveIndex
+                            ? undefined
+                            : 'rgba(255, 255, 255, 0.2)',
+                      opacity: isAfterActiveWave ? 0.5 : 1,
                     }}
                   />
 

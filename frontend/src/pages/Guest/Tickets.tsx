@@ -36,20 +36,17 @@ interface TicketsLocationState {
   date: string;
   time: string;
   heroImageUrl: string;
-  tiers?: Tier[];
 }
 
 const Tickets = () => {
   const location = useLocation();
   const eventData = location.state as TicketsLocationState | null;
   
-  const shouldFetch = !eventData?.tiers && !!eventData?.eventId;
-  const { data: fetchedTiers, isLoading: loading, error } = useEventTiers(
+  // Always fetch tiers in the Tickets page
+  const { data: tiers, isLoading: loading, error } = useEventTiers(
     eventData?.eventId || 0,
-    shouldFetch
+    !!eventData?.eventId
   );
-
-  const tiers = eventData?.tiers || fetchedTiers || [];
 
   const getColorFromGradient = (gradientId: string): string => {
     const gradient = TIER_GRADIENTS.find(g => g.id === gradientId);
@@ -123,13 +120,13 @@ const Tickets = () => {
           </div>
         )}
 
-        {!loading && !error && tiers.length === 0 && (
+        {!loading && !error && (!tiers || tiers.length === 0) && (
           <div className="flex items-center justify-center py-12">
             <p className="text-gray-400">No tickets available for this event</p>
           </div>
         )}
 
-        {!loading && !error && tiers.length > 0 && (
+        {!loading && !error && tiers && tiers.length > 0 && (
           <div className="space-y-4">
             {tiers.map((tier) => (
               <TierCard
